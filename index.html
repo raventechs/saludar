@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SaludAR</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+/* ══ TOKENS ════════════════════════════════════════════════ */
+:root{
+  --navy:#0f1e3d;--navy3:#1e2f55;
+  --blue:#1d4ed8;--blue-dark:#1338a0;
+  --gold:#f0b84a;--gold2:#c49020;
+  --green:#16a34a;--green-bg:#dcfce7;
+  --warn:#d97706;--warn-bg:#fef3c7;
+  --red:#dc2626;--red-bg:#fee2e2;
+  --purple:#7c3aed;--purple-bg:#ede9fe;
+  --teal:#0d9488;--teal-bg:#ccfbf1;
+  --bg:#eef0f6;--surface:#ffffff;--surface2:#f4f6fb;
+  --border:#dde1ec;--text:#0f1e3d;--muted:#6b7a99;
+  --shadow:0 2px 8px rgba(15,30,61,.08);
+  --shadow-md:0 4px 20px rgba(15,30,61,.12);
+  --font:'Inter',sans-serif;--radius:12px;--radius-sm:8px;
+}
+[data-theme="dark"]{
+  --bg:#0f172a;--surface:#1e293b;--surface2:#0f172a;
+  --border:#334155;--text:#f1f5f9;--muted:#94a3b8;
+  --shadow:0 2px 8px rgba(0,0,0,.3);--shadow-md:0 4px 20px rgba(0,0,0,.4);
+  --green-bg:#052e16;--warn-bg:#1c1000;--red-bg:#3f0f0f;
+  --purple-bg:#2e1065;--teal-bg:#042f2e;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;transition:background .2s,color .2s}
+input,select,button,textarea{font-family:var(--font)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ══ SCREENS ════════════════════════════════════════════════ */
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+#screen-login.active{align-items:center;justify-content:center;background:linear-gradient(145deg,var(--navy) 0%,#1a3060 100%);padding:24px}
+#screen-app.active{flex-direction:column}
+#screen-admin.active{flex-direction:column;background:var(--bg)}
+
+/* ══ AUTH ════════════════════════════════════════════════════ */
+.auth-card{background:var(--surface);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 32px 80px rgba(0,0,0,.3);animation:fadeUp .4s ease both}
+.brand-row{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+.brand-icon{width:44px;height:44px;background:var(--navy);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;user-select:none;flex-shrink:0}
+.brand-name{font-size:22px;font-weight:800;color:var(--navy)}
+.brand-name span{color:var(--gold)}
+.auth-title{font-size:24px;font-weight:800;color:var(--navy);margin-bottom:6px}
+.auth-sub{font-size:14px;color:var(--muted);margin-bottom:24px}
+.plan-selector{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.plan-opt{padding:14px 10px;border:2px solid var(--border);border-radius:var(--radius);text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2)}
+.plan-opt.active{border-color:var(--navy);background:#f0f3fa}
+.plan-opt-icon{font-size:24px;margin-bottom:4px}
+.plan-opt-label{font-size:13px;font-weight:700;color:var(--navy)}
+.plan-opt-price{font-size:11px;color:var(--muted)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;color:var(--text);font-size:15px;outline:none;transition:border-color .2s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue)}
+.field input::placeholder,.field textarea::placeholder{color:var(--muted)}
+.field.hidden-field{display:none}
+.btn-primary{width:100%;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 0 var(--navy3);transition:transform .1s,box-shadow .1s;margin-top:6px}
+.btn-primary:active{transform:translateY(2px);box-shadow:0 2px 0 var(--navy3)}
+.btn-primary:disabled{opacity:.5;cursor:default}
+.auth-toggle{text-align:center;font-size:13px;color:var(--muted);margin-top:16px}
+.auth-toggle span{color:var(--blue);cursor:pointer;font-weight:600}
+.auth-err{background:var(--red-bg);color:var(--red);border:1px solid #fca5a5;border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
+.auth-err.show{display:block}
+
+/* ══ APP HEADER ══════════════════════════════════════════════ */
+.app-header{background:var(--navy);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;transition:background .2s}
+[data-theme="dark"] .app-header{background:#080f1e}
+.app-header-brand{font-size:20px;font-weight:800;color:#fff;cursor:pointer;user-select:none}
+.app-header-brand span{color:var(--gold)}
+.app-header-right{display:flex;align-items:center;gap:8px}
+.header-plan-tag{font-size:11px;font-weight:700;background:rgba(255,255,255,.15);color:#fff;padding:4px 10px;border-radius:99px}
+.header-plan-tag.familiar{background:rgba(240,184,74,.25);color:var(--gold)}
+.icon-btn{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:18px;padding:4px;transition:color .2s}
+.icon-btn:hover{color:#fff}
+.avatar-sm{width:32px;height:32px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--navy);flex-shrink:0;cursor:pointer}
+
+/* ══ PROFILE SWITCHER ════════════════════════════════════════ */
+.profile-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:10px;overflow-x:auto;scrollbar-width:none}
+.profile-bar::-webkit-scrollbar{display:none}
+.profile-chip{display:flex;align-items:center;gap:8px;padding:6px 14px;border:2px solid var(--border);border-radius:99px;cursor:pointer;transition:all .2s;white-space:nowrap;background:var(--surface2)}
+.profile-chip.active{border-color:var(--blue);background:#eff6ff}
+[data-theme="dark"] .profile-chip.active{background:#1e3a5f}
+.profile-chip-avatar{width:24px;height:24px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--navy)}
+.profile-chip-name{font-size:13px;font-weight:600;color:var(--text)}
+.profile-chip-add{border-style:dashed;color:var(--muted)}
+
+/* ══ BOTTOM NAV ══════════════════════════════════════════════ */
+.bottom-nav{background:var(--navy);display:flex;position:fixed;bottom:0;left:0;right:0;z-index:100;border-top:1px solid rgba(255,255,255,.1)}
+[data-theme="dark"] .bottom-nav{background:#080f1e}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 8px;font-size:10px;font-weight:600;color:rgba(255,255,255,.4);cursor:pointer;gap:3px;transition:color .2s;position:relative}
+.nav-item.active{color:var(--gold)}
+.nav-icon{font-size:20px}
+
+/* ══ CONTENT ════════════════════════════════════════════════ */
+.app-body{flex:1;overflow-y:auto;padding-bottom:70px}
+.page{padding:16px;animation:fadeUp .3s ease both;display:none}
+.page.active{display:block}
+
+/* ══ CARDS ═══════════════════════════════════════════════════ */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sec-title{font-size:15px;font-weight:700;color:var(--text)}
+.btn-sm{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:var(--text);cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-sm:hover{background:var(--surface2);border-color:var(--blue)}
+.btn-sm.gold{background:var(--gold);color:var(--navy);border-color:var(--gold);box-shadow:0 3px 0 var(--gold2)}
+.btn-sm.danger{background:var(--red-bg);color:var(--red);border-color:#fca5a5}
+
+/* ══ WELLNESS ════════════════════════════════════════════════ */
+.wellness-greeting{font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px}
+.wellness-date{font-size:13px;color:var(--muted);margin-bottom:16px}
+.progress-bar-wrap{background:var(--surface2);border-radius:99px;height:8px;margin-bottom:6px;overflow:hidden}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--gold));border-radius:99px;transition:width .5s ease}
+.progress-label{font-size:12px;color:var(--muted);margin-bottom:16px}
+.checklist{display:flex;flex-direction:column;gap:8px}
+.check-item{display:flex;align-items:center;gap:12px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:12px 16px;cursor:pointer;transition:all .2s}
+.check-item.done{border-color:var(--green);background:var(--green-bg)}
+.check-circle{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;font-size:13px}
+.check-item.done .check-circle{background:var(--green);border-color:var(--green);color:#fff}
+.check-label{font-size:14px;font-weight:500;color:var(--text)}
+.check-item.done .check-label{color:var(--green)}
+
+/* ══ STATS ROW ═══════════════════════════════════════════════ */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center;box-shadow:var(--shadow)}
+.stat-icon{font-size:22px;margin-bottom:6px}
+.stat-val{font-size:20px;font-weight:800;color:var(--text)}
+.stat-lbl{font-size:11px;color:var(--muted);font-weight:500}
+
+/* ══ MODULE GRID ═════════════════════════════════════════════ */
+.module-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px}
+.module-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px;box-shadow:var(--shadow);cursor:pointer;transition:box-shadow .2s,transform .15s;display:flex;flex-direction:column;gap:6px}
+.module-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.module-card-icon{font-size:28px}
+.module-card-title{font-size:14px;font-weight:700;color:var(--text)}
+.module-card-count{font-size:12px;color:var(--muted)}
+.module-card-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;display:inline-block;width:fit-content}
+
+/* ══ LIST ITEMS ══════════════════════════════════════════════ */
+.list-item{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow)}
+.list-item-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.list-item-info{flex:1}
+.list-item-title{font-size:15px;font-weight:700;color:var(--text)}
+.list-item-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.list-item-right{text-align:right}
+.list-item-val{font-size:14px;font-weight:700;color:var(--text)}
+.list-item-date{font-size:11px;color:var(--muted)}
+.badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px}
+.badge-green{background:var(--green-bg);color:var(--green)}
+.badge-warn{background:var(--warn-bg);color:var(--warn)}
+.badge-red{background:var(--red-bg);color:var(--red)}
+.badge-blue{background:#dbeafe;color:var(--blue)}
+.badge-purple{background:var(--purple-bg);color:var(--purple)}
+.badge-teal{background:var(--teal-bg);color:var(--teal)}
+
+/* ══ TURNOS ══════════════════════════════════════════════════ */
+.turno-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow);display:flex;gap:14px;align-items:center}
+.turno-fecha-box{width:52px;text-align:center;flex-shrink:0;background:var(--navy);border-radius:10px;padding:8px 6px}
+[data-theme="dark"] .turno-fecha-box{background:#080f1e}
+.turno-dia-num{font-size:20px;font-weight:800;color:#fff;line-height:1}
+.turno-mes{font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase}
+.turno-info{flex:1}
+.turno-especialidad{font-size:14px;font-weight:700;color:var(--text)}
+.turno-medico{font-size:12px;color:var(--muted);margin-top:2px}
+.turno-hora{font-size:12px;font-weight:600;color:var(--blue);margin-top:4px}
+.turno-estado{font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;white-space:nowrap}
+
+/* ══ HISTORIAL ═══════════════════════════════════════════════ */
+.historial-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow)}
+.historial-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.historial-tipo{font-size:14px;font-weight:700;color:var(--text)}
+.historial-fecha{font-size:12px;color:var(--muted)}
+.historial-detail{font-size:13px;color:var(--muted);line-height:1.5}
+.historial-medico{font-size:12px;color:var(--blue);font-weight:600;margin-top:6px}
+
+/* ══ DIRECTORIO ══════════════════════════════════════════════ */
+.medico-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;box-shadow:var(--shadow)}
+.medico-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.medico-avatar{width:44px;height:44px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0}
+.medico-nombre{font-size:15px;font-weight:700;color:var(--text)}
+.medico-esp{font-size:12px;color:var(--muted);margin-top:2px}
+.medico-datos{display:flex;flex-wrap:wrap;gap:8px}
+.medico-dato{font-size:12px;color:var(--text);background:var(--surface2);padding:4px 10px;border-radius:99px;border:1px solid var(--border)}
+
+/* ══ FAMILIAR ════════════════════════════════════════════════ */
+.familiar-banner{background:linear-gradient(135deg,var(--navy),#1a3060);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+[data-theme="dark"] .familiar-banner{background:linear-gradient(135deg,#080f1e,#0f172a)}
+.familiar-banner-text h3{color:#fff;font-size:16px;font-weight:700;margin-bottom:4px}
+.familiar-banner-text p{color:rgba(255,255,255,.6);font-size:13px}
+.familiar-banner-icon{font-size:36px}
+.invite-code-box{background:var(--surface2);border:2px dashed var(--border);border-radius:var(--radius);padding:16px;text-align:center;margin-bottom:16px}
+.invite-code{font-family:monospace;font-size:24px;font-weight:800;color:var(--blue);letter-spacing:4px}
+.invite-code-label{font-size:12px;color:var(--muted);margin-bottom:8px}
+
+/* ══ PERFIL ══════════════════════════════════════════════════ */
+.perfil-header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.perfil-avatar{width:64px;height:64px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--navy);flex-shrink:0}
+.perfil-nombre{font-size:20px;font-weight:800;color:var(--text)}
+.perfil-plan{font-size:13px;color:var(--muted);margin-top:2px}
+.perfil-dato-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.perfil-dato-row:last-child{border-bottom:none}
+.perfil-dato-label{font-size:13px;color:var(--muted)}
+.perfil-dato-val{font-size:14px;font-weight:600;color:var(--text)}
+
+/* ══ EMPTY / LOADING ═════════════════════════════════════════ */
+.empty{text-align:center;padding:48px 24px;color:var(--muted)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty-msg{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.empty-sub{font-size:14px}
+.loading-wrap{display:flex;justify-content:center;padding:40px}
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+
+/* ══ MODAL ═══════════════════════════════════════════════════ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:1000}
+.modal-overlay.open{display:flex}
+@media(min-width:600px){.modal-overlay{align-items:center}}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:28px 24px 40px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+@media(min-width:600px){.modal{border-radius:20px}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-size:17px;font-weight:800;color:var(--text)}
+.modal-close{width:32px;height:32px;background:var(--surface2);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--muted);border:none}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-footer{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+.btn-cancel{padding:10px 18px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-weight:600;color:var(--muted);cursor:pointer}
+.btn-save{padding:10px 20px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 0 var(--navy3)}
+.btn-save:disabled{opacity:.5;cursor:default}
+
+/* ══ ADMIN PANEL ═════════════════════════════════════════════ */
+.admin-header{background:#7c3aed;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.admin-header-title{font-size:18px;font-weight:800;color:#fff}
+.admin-badge{background:rgba(255,255,255,.2);color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px}
+.btn-admin-exit{background:none;border:2px solid rgba(255,255,255,.4);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)}
+.admin-tabs{background:#6d28d9;display:flex}
+.admin-tab{flex:1;padding:12px 4px;text-align:center;font-size:12px;font-weight:600;color:rgba(255,255,255,.6);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s}
+.admin-tab.active{color:#fff;border-bottom-color:var(--gold)}
+.admin-body{flex:1;overflow-y:auto;padding:16px;background:var(--bg)}
+.admin-section-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px}
+.admin-card{background:var(--surface);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.admin-card-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:2px}
+.admin-card-sub{font-size:12px;color:var(--muted);margin-bottom:10px}
+.admin-card-actions{display:flex;gap:8px}
+.btn-adel{flex:1;padding:8px;background:var(--red-bg);border:1.5px solid #fecaca;border-radius:8px;color:var(--red);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font)}
+.btn-aban{flex:1;padding:8px;background:var(--red-bg);border:1.5px solid #fecaca;border-radius:8px;color:var(--red);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font)}
+.btn-aunban{flex:1;padding:8px;background:var(--green-bg);border:1.5px solid #86efac;border-radius:8px;color:var(--green);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font)}
+.ban-badge{font-size:10px;font-weight:700;background:var(--red);color:#fff;padding:2px 6px;border-radius:6px;margin-left:6px}
+
+/* ══ PIN ═════════════════════════════════════════════════════ */
+.pin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:9999}
+.pin-overlay.open{display:flex}
+@media(min-width:600px){.pin-overlay{align-items:center}}
+.pin-modal{background:var(--surface);border-radius:20px 20px 0 0;padding:28px 24px 40px;width:100%;max-width:360px}
+@media(min-width:600px){.pin-modal{border-radius:20px}}
+.pin-modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.pin-modal-title{font-size:17px;font-weight:800;color:var(--text)}
+.pin-close-btn{width:32px;height:32px;background:var(--surface2);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--muted);border:none}
+.pin-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:16px}
+.pin-dots{display:flex;gap:10px;justify-content:center;margin-bottom:20px}
+.pin-dot{width:16px;height:16px;border-radius:50%;background:var(--border);transition:background .2s}
+.pin-dot.filled{background:var(--blue)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pin-btn{padding:16px;background:var(--surface2);border:2px solid var(--border);border-radius:12px;font-size:20px;font-weight:700;color:var(--text);cursor:pointer;font-family:var(--font);transition:all .2s}
+.pin-btn:active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.pin-err{color:var(--red);font-size:13px;font-weight:600;text-align:center;margin-top:10px;display:none}
+
+/* ══ TOAST ════════════════════════════════════════════════════ */
+#toast-wrap{position:fixed;bottom:80px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:9998}
+.toast{background:var(--navy);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:var(--shadow-md);animation:fadeUp .3s ease both}
+[data-theme="dark"] .toast{background:#1e293b;border:1px solid var(--border)}
+.toast.err{background:var(--red)}
+.toast.ok{background:var(--green)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="screen-login" class="screen active">
+  <div class="auth-card">
+    <div class="brand-row">
+      <div class="brand-icon" id="login-logo">🩺</div>
+      <div class="brand-name">Salud<span>AR</span></div>
+    </div>
+    <div class="auth-title" id="auth-title">Bienvenido</div>
+    <div class="auth-sub">Tu historial de salud, siempre a mano</div>
+    <div class="plan-selector" id="plan-selector">
+      <div class="plan-opt active" id="plan-individual">
+        <div class="plan-opt-icon">👤</div>
+        <div class="plan-opt-label">Individual</div>
+        <div class="plan-opt-price">~$5 USD/mes</div>
+      </div>
+      <div class="plan-opt" id="plan-familiar">
+        <div class="plan-opt-icon">👨‍👩‍👧</div>
+        <div class="plan-opt-label">Familiar</div>
+        <div class="plan-opt-price">~$10 USD/mes</div>
+      </div>
+    </div>
+    <div class="field hidden-field" id="field-invite">
+      <label>Código de invitación (opcional)</label>
+      <input id="f-invite" placeholder="Ingresá el código del titular"/>
+    </div>
+    <div class="auth-err" id="auth-err"></div>
+    <div class="field"><label>Email</label><input id="f-email" type="email" placeholder="tu@email.com"/></div>
+    <div class="field"><label>Contraseña</label><input id="f-pass" type="password" placeholder="••••••••"/></div>
+    <div class="field hidden-field" id="field-nombre">
+      <label>Tu nombre</label>
+      <input id="f-nombre" placeholder="Nombre completo"/>
+    </div>
+    <button class="btn-primary" id="btn-auth">Ingresar →</button>
+    <div class="auth-toggle"><span id="toggle-mode">Registrarse</span></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="screen-app" class="screen">
+  <div class="app-header">
+    <div class="app-header-brand" id="app-logo">Salud<span>AR</span></div>
+    <div class="app-header-right">
+      <span class="header-plan-tag" id="plan-tag">Individual</span>
+      <button class="icon-btn" id="btn-theme-app">🌙</button>
+      <div class="avatar-sm" id="app-avatar">U</div>
+    </div>
+  </div>
+  <div class="profile-bar" id="profile-bar"></div>
+  <div class="app-body">
+    <div id="page-inicio" class="page active"></div>
+    <div id="page-estudios" class="page"></div>
+    <div id="page-turnos" class="page"></div>
+    <div id="page-directorio" class="page"></div>
+    <div id="page-historial" class="page"></div>
+    <div id="page-perfil" class="page"></div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item active" data-page="inicio"><span class="nav-icon">🏠</span>Inicio</div>
+    <div class="nav-item" data-page="estudios"><span class="nav-icon">🧪</span>Estudios</div>
+    <div class="nav-item" data-page="turnos"><span class="nav-icon">📅</span>Turnos</div>
+    <div class="nav-item" data-page="directorio"><span class="nav-icon">👨‍⚕️</span>Médicos</div>
+    <div class="nav-item" data-page="historial"><span class="nav-icon">📋</span>Historial</div>
+    <div class="nav-item" data-page="perfil"><span class="nav-icon">👤</span>Perfil</div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="screen-admin" class="screen">
+  <div class="admin-header">
+    <div class="admin-header-title">⚡ Panel Admin</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="admin-badge">SUPER USUARIO</span>
+      <button class="btn-admin-exit" id="btn-admin-exit">Salir</button>
+    </div>
+  </div>
+  <div class="admin-tabs">
+    <div class="admin-tab active" id="atab-users">👥 Usuarios</div>
+    <div class="admin-tab" id="atab-perfiles">🩺 Perfiles</div>
+  </div>
+  <div class="admin-body">
+    <div id="admin-users-view">
+      <p class="admin-section-title">Todos los usuarios</p>
+      <div id="admin-users-list"><div class="loading-wrap"><div class="spinner"></div></div></div>
+    </div>
+    <div id="admin-perfiles-view" style="display:none">
+      <p class="admin-section-title">Todos los perfiles</p>
+      <div id="admin-perfiles-list"><div class="loading-wrap"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALES -->
+<div class="modal-overlay" id="modal-estudio">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">🧪 Agregar estudio</span><button class="modal-close" id="btn-close-estudio">✕</button></div>
+    <div class="field"><label>Tipo de estudio *</label>
+      <select id="e-tipo"><option>Análisis de sangre</option><option>Análisis de orina</option><option>Radiografía</option><option>Ecografía</option><option>Tomografía</option><option>Resonancia magnética</option><option>Electrocardiograma</option><option>Mamografía</option><option>Otro</option></select>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Fecha *</label><input id="e-fecha" type="date"/></div>
+      <div class="field"><label>Laboratorio / Centro</label><input id="e-lab" placeholder="Lab. Central"/></div>
+    </div>
+    <div class="field"><label>Médico solicitante</label><input id="e-medico" placeholder="Dr. García"/></div>
+    <div class="field"><label>Observaciones</label><textarea id="e-obs" rows="3" placeholder="Resultados o notas importantes..."></textarea></div>
+    <div class="field"><label>Link del resultado (Google Photos, Drive, etc.)</label><input id="e-link" type="url" placeholder="https://..."/></div>
+    <div class="modal-footer"><button class="btn-cancel" id="btn-cancel-estudio">Cancelar</button><button class="btn-save" id="btn-save-estudio">Guardar estudio</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-turno">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">📅 Nuevo turno</span><button class="modal-close" id="btn-close-turno">✕</button></div>
+    <div class="field"><label>Especialidad *</label>
+      <select id="t-esp"><option>Clínico / Médico general</option><option>Cardiología</option><option>Dermatología</option><option>Endocrinología</option><option>Gastroenterología</option><option>Ginecología</option><option>Neurología</option><option>Oftalmología</option><option>Oncología</option><option>Ortopedia</option><option>Pediatría</option><option>Psicología</option><option>Traumatología</option><option>Urología</option><option>Otra</option></select>
+    </div>
+    <div class="field"><label>Médico</label><input id="t-medico" placeholder="Dr. Martínez"/></div>
+    <div class="field-row">
+      <div class="field"><label>Fecha *</label><input id="t-fecha" type="date"/></div>
+      <div class="field"><label>Hora *</label><input id="t-hora" type="time"/></div>
+    </div>
+    <div class="field"><label>Lugar / Clínica</label><input id="t-lugar" placeholder="Clínica San Martín"/></div>
+    <div class="field"><label>Notas</label><textarea id="t-notas" rows="2" placeholder="Llevar estudios previos, en ayunas, etc."></textarea></div>
+    <div class="modal-footer"><button class="btn-cancel" id="btn-cancel-turno">Cancelar</button><button class="btn-save" id="btn-save-turno">Guardar turno</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-medico">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">👨‍⚕️ Agregar médico</span><button class="modal-close" id="btn-close-medico">✕</button></div>
+    <div class="field-row">
+      <div class="field"><label>Nombre *</label><input id="m-nombre" placeholder="Dr. García"/></div>
+      <div class="field"><label>Especialidad *</label><input id="m-esp" placeholder="Cardiólogo"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Teléfono</label><input id="m-tel" type="tel" placeholder="011-4444-5555"/></div>
+      <div class="field"><label>Obra social / Prepaga</label><input id="m-os" placeholder="OSDE, Swiss Medical..."/></div>
+    </div>
+    <div class="field"><label>Dirección / Clínica</label><input id="m-dir" placeholder="Av. Santa Fe 1234, CABA"/></div>
+    <div class="field"><label>Notas</label><input id="m-notas" placeholder="Horarios, turnos por whatsapp, etc."/></div>
+    <div class="modal-footer"><button class="btn-cancel" id="btn-cancel-medico">Cancelar</button><button class="btn-save" id="btn-save-medico">Guardar médico</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-historial">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">📋 Agregar registro</span><button class="modal-close" id="btn-close-hist">✕</button></div>
+    <div class="field"><label>Tipo *</label>
+      <select id="h-tipo"><option>Consulta médica</option><option>Internación</option><option>Cirugía</option><option>Urgencia / Guardia</option><option>Vacuna</option><option>Medicación crónica</option><option>Otro</option></select>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Fecha *</label><input id="h-fecha" type="date"/></div>
+      <div class="field"><label>Médico</label><input id="h-medico" placeholder="Dr. Pérez"/></div>
+    </div>
+    <div class="field"><label>Diagnóstico / Descripción *</label><textarea id="h-desc" rows="3" placeholder="Describí el evento médico..."></textarea></div>
+    <div class="field"><label>Establecimiento</label><input id="h-lugar" placeholder="Hospital Italiano, Clínica..."/></div>
+    <div class="modal-footer"><button class="btn-cancel" id="btn-cancel-hist">Cancelar</button><button class="btn-save" id="btn-save-hist">Guardar registro</button></div>
+  </div>
+</div>
+
+<!-- PIN -->
+<div class="pin-overlay" id="pin-overlay">
+  <div class="pin-modal">
+    <div class="pin-modal-header">
+      <span class="pin-modal-title">🔐 Acceso admin</span>
+      <button class="pin-close-btn" id="btn-pin-close">✕</button>
+    </div>
+    <p class="pin-sub">Ingresá el PIN de administrador</p>
+    <div class="pin-dots">
+      <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-btn" data-n="1">1</button><button class="pin-btn" data-n="2">2</button><button class="pin-btn" data-n="3">3</button>
+      <button class="pin-btn" data-n="4">4</button><button class="pin-btn" data-n="5">5</button><button class="pin-btn" data-n="6">6</button>
+      <button class="pin-btn" data-n="7">7</button><button class="pin-btn" data-n="8">8</button><button class="pin-btn" data-n="9">9</button>
+      <button class="pin-btn" data-n="del">⌫</button><button class="pin-btn" data-n="0">0</button>
+      <button class="pin-btn" data-n="ok" style="background:var(--blue);color:#fff;border-color:var(--blue);font-size:14px">OK</button>
+    </div>
+    <p class="pin-err" id="pin-err">PIN incorrecto</p>
+  </div>
+</div>
+
+<div id="toast-wrap"></div>
+
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import{getFirestore,collection,doc,setDoc,addDoc,getDocs,getDoc,updateDoc,deleteDoc,query,where,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// 🔧 FIREBASE CONFIG — reemplazar con datos reales del proyecto SaludAR
+const FB={
+  apiKey:"AIzaSyAl_gMgQoZa6F-tInkoc61AA8ggzMhlRPY",
+  authDomain:"saludar-b565d.firebaseapp.com",
+  projectId:"saludar-b565d",
+  storageBucket:"saludar-b565d.firebasestorage.app",
+  messagingSenderId:"72976839510",
+  appId:"1:72976839510:web:1c08a90e3730748e03dcf7"
+};
+// 🔐 PIN ADMIN
+const ADMIN_PIN="1990";
+
+const fbApp=initializeApp(FB);
+const auth=getAuth(fbApp);
+const db=getFirestore(fbApp);
+
+// ── ESTADO ────────────────────────────────────────────────
+let me=null, myDoc=null;
+let perfiles=[], perfilActivo=null;
+let estudios=[], turnos=[], medicos=[], historial=[];
+let isRegister=false, planSelected="individual";
+let logoTaps=0, logoTimer=null, pinBuf="";
+
+// ── TEMA ──────────────────────────────────────────────────
+function initTheme(){applyTheme(localStorage.getItem('saludar-theme')||'light');}
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  const dark=t==='dark';
+  const b=document.getElementById('btn-theme-app');
+  if(b)b.textContent=dark?'🌞':'🌙';
+  localStorage.setItem('saludar-theme',t);
+}
+function toggleTheme(){applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');}
+initTheme();
+
+// ── HELPERS ───────────────────────────────────────────────
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function toast(msg,type=''){
+  const el=document.createElement('div');el.className=`toast${type?' '+type:''}`;
+  el.textContent=(type==='err'?'❌ ':type==='ok'?'✅ ':'✅ ')+msg;
+  document.getElementById('toast-wrap').appendChild(el);
+  setTimeout(()=>el.remove(),3000);
+}
+function spinnerHTML(){return'<div class="loading-wrap"><div class="spinner"></div></div>';}
+function emptyHTML(icon,msg,sub=''){return`<div class="empty"><div class="empty-icon">${icon}</div><div class="empty-msg">${msg}</div>${sub?`<div class="empty-sub">${sub}</div>`:''}</div>`;}
+function fmtFecha(str){if(!str)return'—';const[y,m,d]=str.split('-');const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];return`${d} ${meses[parseInt(m)-1]} ${y}`;}
+function diasRestantes(str){if(!str)return null;return Math.ceil((new Date(str+'T00:00:00')-new Date())/86400000);}
+function inviteCode(){return Math.random().toString(36).substring(2,8).toUpperCase();}
+
+// ── LOGO TAPS → PIN ───────────────────────────────────────
+['login-logo','app-logo'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('click',()=>{
+    logoTaps++;clearTimeout(logoTimer);
+    if(logoTaps>=5){logoTaps=0;openPin();return;}
+    logoTimer=setTimeout(()=>logoTaps=0,2000);
+  });
+});
+
+// ── PIN ───────────────────────────────────────────────────
+function openPin(){pinBuf='';updDots();document.getElementById('pin-err').style.display='none';document.getElementById('pin-overlay').classList.add('open');}
+function closePin(){document.getElementById('pin-overlay').classList.remove('open');}
+function updDots(){for(let i=0;i<4;i++)document.getElementById(`d${i}`).classList.toggle('filled',i<pinBuf.length);}
+
+document.querySelector('.pin-pad').addEventListener('click',e=>{
+  const btn=e.target.closest('.pin-btn');if(!btn)return;
+  const n=btn.dataset.n;
+  if(n==='del'){pinBuf=pinBuf.slice(0,-1);updDots();return;}
+  if(n==='ok'||pinBuf.length===4){checkPin();return;}
+  if(pinBuf.length<4){pinBuf+=n;updDots();}
+  if(pinBuf.length===4)checkPin();
+});
+function checkPin(){
+  if(pinBuf===ADMIN_PIN){closePin();showScreen('screen-admin');loadAdminUsers();}
+  else{document.getElementById('pin-err').style.display='block';pinBuf='';updDots();setTimeout(()=>document.getElementById('pin-err').style.display='none',1500);}
+}
+document.getElementById('btn-pin-close').addEventListener('click',closePin);
+document.getElementById('pin-overlay').addEventListener('click',e=>{if(e.target.id==='pin-overlay')closePin();});
+
+// ── ADMIN ─────────────────────────────────────────────────
+async function loadAdminUsers(){
+  const c=document.getElementById('admin-users-list');c.innerHTML=spinnerHTML();
+  const snap=await getDocs(collection(db,'usuarios'));
+  if(snap.empty){c.innerHTML=emptyHTML('👥','Sin usuarios');return;}
+  c.innerHTML=snap.docs.map(d=>{const u=d.data();const ban=u.banned===true;return`<div class="admin-card"><div class="admin-card-title">${u.nombre||u.email}${ban?'<span class="ban-badge">BANEADO</span>':''}</div><div class="admin-card-sub">${u.email} · Plan ${u.plan||'individual'}</div><div class="admin-card-actions">${ban?`<button class="btn-aunban" data-uid="${d.id}">✅ Desbanear</button>`:`<button class="btn-aban" data-uid="${d.id}">🚫 Banear</button>`}<button class="btn-adel" data-uid="${d.id}">🗑️ Eliminar</button></div></div>`;}).join('');
+}
+async function loadAdminPerfiles(){
+  const c=document.getElementById('admin-perfiles-list');c.innerHTML=spinnerHTML();
+  const snap=await getDocs(collection(db,'perfiles'));
+  if(snap.empty){c.innerHTML=emptyHTML('🩺','Sin perfiles');return;}
+  c.innerHTML=snap.docs.map(d=>{const p=d.data();return`<div class="admin-card"><div class="admin-card-title">${p.nombre||'—'}</div><div class="admin-card-sub">${p.ownerUid||'—'} · ${p.tipo||'titular'}</div><div class="admin-card-actions"><button class="btn-adel" data-pid="${d.id}">🗑️ Eliminar</button></div></div>`;}).join('');
+}
+
+document.getElementById('admin-users-list').addEventListener('click',async e=>{
+  const ban=e.target.closest('.btn-aban');const unban=e.target.closest('.btn-aunban');const del=e.target.closest('.btn-adel');
+  if(ban&&confirm('¿Banear este usuario?')){await updateDoc(doc(db,'usuarios',ban.dataset.uid),{banned:true});toast('Usuario baneado');await loadAdminUsers();}
+  if(unban){await updateDoc(doc(db,'usuarios',unban.dataset.uid),{banned:false});toast('Usuario desbaneado');await loadAdminUsers();}
+  if(del&&confirm('¿Eliminar este usuario?')){await deleteDoc(doc(db,'usuarios',del.dataset.uid));toast('Usuario eliminado');await loadAdminUsers();}
+});
+document.getElementById('admin-perfiles-list').addEventListener('click',async e=>{
+  const del=e.target.closest('.btn-adel');
+  if(del&&confirm('¿Eliminar este perfil?')){await deleteDoc(doc(db,'perfiles',del.dataset.pid));toast('Perfil eliminado');await loadAdminPerfiles();}
+});
+document.getElementById('atab-users').addEventListener('click',()=>{
+  document.getElementById('admin-users-view').style.display='block';document.getElementById('admin-perfiles-view').style.display='none';
+  document.getElementById('atab-users').classList.add('active');document.getElementById('atab-perfiles').classList.remove('active');
+  loadAdminUsers();
+});
+document.getElementById('atab-perfiles').addEventListener('click',()=>{
+  document.getElementById('admin-perfiles-view').style.display='block';document.getElementById('admin-users-view').style.display='none';
+  document.getElementById('atab-perfiles').classList.add('active');document.getElementById('atab-users').classList.remove('active');
+  loadAdminPerfiles();
+});
+document.getElementById('btn-admin-exit').addEventListener('click',()=>{if(me)showScreen('screen-app');else showScreen('screen-login');});
+
+// ── AUTH STATE ────────────────────────────────────────────
+onAuthStateChanged(auth,async user=>{
+  if(user){
+    me=user;
+    const snap=await getDoc(doc(db,'usuarios',user.uid));
+    if(!snap.exists()){toast('Error al cargar usuario','err');await signOut(auth);return;}
+    myDoc=snap.data();
+    if(myDoc.banned){toast('Cuenta suspendida','err');await signOut(auth);return;}
+    document.getElementById('app-avatar').textContent=(myDoc.nombre||user.email).substring(0,2).toUpperCase();
+    const planTag=document.getElementById('plan-tag');
+    planTag.textContent=myDoc.plan==='familiar'?'👨‍👩‍👧 Familiar':'👤 Individual';
+    if(myDoc.plan==='familiar')planTag.classList.add('familiar');
+    showScreen('screen-app');
+    await loadPerfiles();
+    renderPage('inicio');
+  } else {
+    me=null;myDoc=null;perfiles=[];perfilActivo=null;
+    showScreen('screen-login');
+  }
+});
+
+// ── AUTH ACTIONS ──────────────────────────────────────────
+document.getElementById('plan-individual').addEventListener('click',()=>{
+  planSelected='individual';
+  document.getElementById('plan-individual').classList.add('active');
+  document.getElementById('plan-familiar').classList.remove('active');
+  document.getElementById('field-invite').classList.add('hidden-field');
+});
+document.getElementById('plan-familiar').addEventListener('click',()=>{
+  planSelected='familiar';
+  document.getElementById('plan-familiar').classList.add('active');
+  document.getElementById('plan-individual').classList.remove('active');
+  document.getElementById('field-invite').classList.remove('hidden-field');
+});
+document.getElementById('toggle-mode').addEventListener('click',()=>{
+  isRegister=!isRegister;
+  document.getElementById('btn-auth').textContent=isRegister?'Crear cuenta →':'Ingresar →';
+  document.getElementById('toggle-mode').textContent=isRegister?'Ya tengo cuenta':'Registrarse';
+  document.getElementById('auth-title').textContent=isRegister?'Crear cuenta':'Bienvenido';
+  document.getElementById('plan-selector').style.display=isRegister?'grid':'none';
+  document.getElementById('field-nombre').classList.toggle('hidden-field',!isRegister);
+});
+document.getElementById('f-pass').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-auth').click();});
+
+document.getElementById('btn-auth').addEventListener('click',async()=>{
+  const email=document.getElementById('f-email').value.trim();
+  const pass=document.getElementById('f-pass').value;
+  const errEl=document.getElementById('auth-err');
+  errEl.style.display='none';errEl.classList.remove('show');
+  if(!email||!pass){errEl.textContent='Completá todos los campos';errEl.style.display='block';errEl.classList.add('show');return;}
+  const btn=document.getElementById('btn-auth');btn.disabled=true;btn.textContent=isRegister?'Creando...':'Ingresando...';
+  try{
+    if(isRegister){
+      const nombre=document.getElementById('f-nombre').value.trim()||email.split('@')[0];
+      const code=inviteCode();
+      const cred=await createUserWithEmailAndPassword(auth,email,pass);
+      await setDoc(doc(db,'usuarios',cred.user.uid),{uid:cred.user.uid,email,nombre,plan:planSelected,inviteCode:code,banned:false,createdAt:serverTimestamp()});
+      // Crear perfil titular
+      await addDoc(collection(db,'perfiles'),{ownerUid:cred.user.uid,nombre,tipo:'titular',fechaNac:'',grupoSanguineo:'',alergias:'',medicacionCronica:'',obraSocial:'',createdAt:serverTimestamp()});
+    } else {
+      await signInWithEmailAndPassword(auth,email,pass);
+    }
+  }catch(e){
+    const msgs={"auth/user-not-found":"No existe cuenta con ese email.","auth/wrong-password":"Contraseña incorrecta.","auth/email-already-in-use":"Ya existe cuenta con ese email.","auth/weak-password":"Mínimo 6 caracteres.","auth/invalid-credential":"Email o contraseña incorrectos."};
+    errEl.textContent=msgs[e.code]||'Error. Intentá de nuevo.';
+    errEl.style.display='block';errEl.classList.add('show');
+  }
+  btn.disabled=false;btn.textContent=isRegister?'Crear cuenta →':'Ingresar →';
+});
+
+document.getElementById('btn-theme-app').addEventListener('click',toggleTheme);
+document.getElementById('app-avatar').addEventListener('click',()=>renderPage('perfil'));
+
+// ── PERFILES ──────────────────────────────────────────────
+async function loadPerfiles(){
+  const snap=await getDocs(query(collection(db,'perfiles'),where('ownerUid','==',me.uid)));
+  perfiles=snap.docs.map(d=>({id:d.id,...d.data()}));
+  perfilActivo=perfiles[0]||null;
+  renderProfileBar();
+  if(perfilActivo)await loadPerfilData();
+}
+
+function renderProfileBar(){
+  const bar=document.getElementById('profile-bar');
+  bar.innerHTML=perfiles.map(p=>`<div class="profile-chip ${p.id===perfilActivo?.id?'active':''}" data-pid="${p.id}">
+    <div class="profile-chip-avatar">${(p.nombre||'?').substring(0,1)}</div>
+    <div class="profile-chip-name">${p.nombre}</div>
+  </div>`).join('');
+  if(myDoc?.plan==='familiar'&&perfiles.length<2){
+    bar.innerHTML+=`<div class="profile-chip profile-chip-add" id="btn-add-familiar">＋ Familiar</div>`;
+    document.getElementById('btn-add-familiar')?.addEventListener('click',()=>toast('Función de invitación próximamente'));
+  }
+  bar.querySelectorAll('.profile-chip[data-pid]').forEach(chip=>{
+    chip.addEventListener('click',async()=>{
+      perfilActivo=perfiles.find(p=>p.id===chip.dataset.pid);
+      renderProfileBar();await loadPerfilData();renderPage(currentPage);
+    });
+  });
+}
+
+async function loadPerfilData(){
+  if(!perfilActivo)return;
+  const pid=perfilActivo.id;
+  const [eSnap,tSnap,mSnap,hSnap]=await Promise.all([
+    getDocs(query(collection(db,'perfiles',pid,'estudios'),orderBy('fecha','desc'))),
+    getDocs(query(collection(db,'perfiles',pid,'turnos'),orderBy('fecha','asc'))),
+    getDocs(query(collection(db,'perfiles',pid,'medicos'),orderBy('nombre','asc'))),
+    getDocs(query(collection(db,'perfiles',pid,'historial'),orderBy('fecha','desc')))
+  ]);
+  estudios=eSnap.docs.map(d=>({id:d.id,...d.data()}));
+  turnos=tSnap.docs.map(d=>({id:d.id,...d.data()}));
+  medicos=mSnap.docs.map(d=>({id:d.id,...d.data()}));
+  historial=hSnap.docs.map(d=>({id:d.id,...d.data()}));
+}
+
+// ── NAVEGACIÓN ────────────────────────────────────────────
+let currentPage='inicio';
+function renderPage(page){
+  currentPage=page;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
+  if(page==='inicio')renderInicio();
+  else if(page==='estudios')renderEstudios();
+  else if(page==='turnos')renderTurnos();
+  else if(page==='directorio')renderDirectorio();
+  else if(page==='historial')renderHistorial();
+  else if(page==='perfil')renderPerfil();
+}
+document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.addEventListener('click',()=>renderPage(n.dataset.page)));
+
+// ── INICIO ────────────────────────────────────────────────
+const WELLNESS_ITEMS=[
+  {id:'agua',label:'Tomé mis 8 vasos de agua',icon:'💧'},
+  {id:'medicacion',label:'Tomé mi medicación',icon:'💊'},
+  {id:'ejercicio',label:'Hice actividad física',icon:'🏃'},
+  {id:'desayuno',label:'Desayuné bien',icon:'🥗'},
+  {id:'dormi',label:'Dormí 7-8 horas',icon:'😴'},
+];
+let wellnessCheck={};
+
+function renderInicio(){
+  const el=document.getElementById('page-inicio');
+  const hora=new Date().getHours();
+  const saludo=hora<12?'Buenos días':'hora<18?''Buenas tardes':'Buenas noches';
+  const done=WELLNESS_ITEMS.filter(i=>wellnessCheck[i.id]).length;
+  const pct=Math.round(done/WELLNESS_ITEMS.length*100);
+  const proxTurno=turnos.filter(t=>new Date(t.fecha+'T00:00:00')>=new Date()).sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
+  el.innerHTML=`
+    <div class="card">
+      <div class="wellness-greeting">${hora<12?'Buenos días':hora<18?'Buenas tardes':'Buenas noches'}, ${perfilActivo?.nombre?.split(' ')[0]||''}! 👋</div>
+      <div class="wellness-date">${new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})}</div>
+      <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+      <div class="progress-label">${done} de ${WELLNESS_ITEMS.length} hábitos completados hoy · ${pct}%</div>
+      <div class="checklist" id="wellness-list">
+        ${WELLNESS_ITEMS.map(item=>`
+          <div class="check-item ${wellnessCheck[item.id]?'done':''}" data-wid="${item.id}">
+            <div class="check-circle">${wellnessCheck[item.id]?'✓':''}</div>
+            <span class="check-label">${item.icon} ${item.label}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-icon">🧪</div><div class="stat-val">${estudios.length}</div><div class="stat-lbl">Estudios</div></div>
+      <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-val">${turnos.filter(t=>new Date(t.fecha+'T00:00:00')>=new Date()).length}</div><div class="stat-lbl">Turnos</div></div>
+      <div class="stat-card"><div class="stat-icon">👨‍⚕️</div><div class="stat-val">${medicos.length}</div><div class="stat-lbl">Médicos</div></div>
+    </div>
+    ${proxTurno?`
+    <div class="card">
+      <div class="card-title">📅 Próximo turno</div>
+      <div class="turno-item" style="box-shadow:none;border:none;padding:0;margin:0">
+        <div class="turno-fecha-box">
+          <div class="turno-dia-num">${proxTurno.fecha.split('-')[2]}</div>
+          <div class="turno-mes">${['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(proxTurno.fecha.split('-')[1])-1]}</div>
+        </div>
+        <div class="turno-info">
+          <div class="turno-especialidad">${proxTurno.especialidad}</div>
+          <div class="turno-medico">${proxTurno.medico||'—'}</div>
+          <div class="turno-hora">🕐 ${proxTurno.hora||'—'} · ${proxTurno.lugar||'—'}</div>
+        </div>
+        <div class="turno-estado badge badge-blue">${diasRestantes(proxTurno.fecha)===0?'Hoy':`En ${diasRestantes(proxTurno.fecha)}d`}</div>
+      </div>
+    </div>`:
+    `<div class="card" style="text-align:center;padding:20px"><div style="font-size:32px;margin-bottom:8px">📅</div><div style="font-size:14px;color:var(--muted)">Sin turnos próximos</div><button class="btn-sm gold" id="btn-add-turno-home" style="margin-top:12px;margin:12px auto 0">＋ Agendar turno</button></div>`}`;
+
+  el.querySelectorAll('.check-item[data-wid]').forEach(item=>{
+    item.addEventListener('click',()=>{
+      const wid=item.dataset.wid;
+      wellnessCheck[wid]=!wellnessCheck[wid];
+      renderInicio();
+    });
+  });
+  el.querySelector('#btn-add-turno-home')?.addEventListener('click',()=>openModal('modal-turno'));
+}
+
+// ── ESTUDIOS ──────────────────────────────────────────────
+function renderEstudios(){
+  const el=document.getElementById('page-estudios');
+  el.innerHTML=`
+    <div class="sec-header"><span class="sec-title" style="font-size:17px">Estudios y laboratorio</span><button class="btn-sm gold" id="btn-add-estudio">＋ Agregar</button></div>
+    ${estudios.length===0?emptyHTML('🧪','Sin estudios','Cargá tu primer estudio o laboratorio'):
+    estudios.map(e=>`<div class="list-item">
+      <div class="list-item-icon" style="background:#dbeafe">🧪</div>
+      <div class="list-item-info">
+        <div class="list-item-title">${e.tipo}</div>
+        <div class="list-item-sub">${e.laboratorio||'—'}${e.medico?' · '+e.medico:''}</div>
+        ${e.observaciones?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${e.observaciones}</div>`:''}
+        ${e.link?`<a href="${e.link}" target="_blank" style="font-size:12px;color:var(--blue);font-weight:600;display:block;margin-top:4px">Ver resultado →</a>`:''}
+      </div>
+      <div class="list-item-right">
+        <div class="list-item-date">${fmtFecha(e.fecha)}</div>
+      </div>
+    </div>`).join('')}`;
+  el.querySelector('#btn-add-estudio')?.addEventListener('click',()=>openModal('modal-estudio'));
+}
+
+// ── TURNOS ────────────────────────────────────────────────
+function renderTurnos(){
+  const el=document.getElementById('page-turnos');
+  const proximos=turnos.filter(t=>new Date(t.fecha+'T00:00:00')>=new Date()).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const pasados=turnos.filter(t=>new Date(t.fecha+'T00:00:00')<new Date()).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  function turnoHTML(t){
+    const dr=diasRestantes(t.fecha);const futuro=dr>=0;
+    const estadoClass=dr===0?'badge-warn':futuro?'badge-blue':'badge badge-green';
+    const estadoText=dr===0?'Hoy':futuro?`En ${dr}d`:'Realizado';
+    const mes=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(t.fecha.split('-')[1])-1];
+    return`<div class="turno-item">
+      <div class="turno-fecha-box"><div class="turno-dia-num">${t.fecha.split('-')[2]}</div><div class="turno-mes">${mes}</div></div>
+      <div class="turno-info">
+        <div class="turno-especialidad">${t.especialidad}</div>
+        <div class="turno-medico">${t.medico||'—'}</div>
+        <div class="turno-hora">🕐 ${t.hora||'—'}${t.lugar?' · '+t.lugar:''}</div>
+        ${t.notas?`<div style="font-size:11px;color:var(--muted);margin-top:4px">📝 ${t.notas}</div>`:''}
+      </div>
+      <div class="turno-estado badge ${estadoClass}">${estadoText}</div>
+    </div>`;
+  }
+  el.innerHTML=`
+    <div class="sec-header"><span class="sec-title" style="font-size:17px">Mis turnos</span><button class="btn-sm gold" id="btn-add-turno">＋ Agendar</button></div>
+    ${proximos.length===0&&pasados.length===0?emptyHTML('📅','Sin turnos','Agendá tu primer turno médico'):''}
+    ${proximos.length?`<div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Próximos</div>${proximos.map(turnoHTML).join('')}`:''}
+    ${pasados.length?`<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;margin-top:20px">Anteriores</div>${pasados.map(turnoHTML).join('')}`:''}`;
+  el.querySelector('#btn-add-turno')?.addEventListener('click',()=>openModal('modal-turno'));
+}
+
+// ── DIRECTORIO ────────────────────────────────────────────
+function renderDirectorio(){
+  const el=document.getElementById('page-directorio');
+  el.innerHTML=`
+    <div class="sec-header"><span class="sec-title" style="font-size:17px">Mis médicos</span><button class="btn-sm gold" id="btn-add-medico">＋ Agregar</button></div>
+    ${medicos.length===0?emptyHTML('👨‍⚕️','Sin médicos','Cargá tus especialistas de confianza'):
+    medicos.map(m=>`<div class="medico-card">
+      <div class="medico-header">
+        <div class="medico-avatar">${m.nombre.substring(0,2).toUpperCase()}</div>
+        <div><div class="medico-nombre">${m.nombre}</div><div class="medico-esp">${m.especialidad}</div></div>
+      </div>
+      <div class="medico-datos">
+        ${m.telefono?`<div class="medico-dato">📞 ${m.telefono}</div>`:''}
+        ${m.obraSocial?`<div class="medico-dato">🏥 ${m.obraSocial}</div>`:''}
+        ${m.direccion?`<div class="medico-dato">📍 ${m.direccion}</div>`:''}
+        ${m.notas?`<div class="medico-dato">📝 ${m.notas}</div>`:''}
+      </div>
+    </div>`).join('')}`;
+  el.querySelector('#btn-add-medico')?.addEventListener('click',()=>openModal('modal-medico'));
+}
+
+// ── HISTORIAL ─────────────────────────────────────────────
+function renderHistorial(){
+  const el=document.getElementById('page-historial');
+  const tipoIcon={
+    'Consulta médica':'🩺','Internación':'🏥','Cirugía':'⚕️',
+    'Urgencia / Guardia':'🚨','Vacuna':'💉','Medicación crónica':'💊','Otro':'📋'
+  };
+  el.innerHTML=`
+    <div class="sec-header"><span class="sec-title" style="font-size:17px">Historial médico</span><button class="btn-sm gold" id="btn-add-hist">＋ Agregar</button></div>
+    ${historial.length===0?emptyHTML('📋','Sin registros','Cargá consultas, internaciones y cirugías'):
+    historial.map(h=>`<div class="historial-item">
+      <div class="historial-header">
+        <div class="historial-tipo">${tipoIcon[h.tipo]||'📋'} ${h.tipo}</div>
+        <div class="historial-fecha">${fmtFecha(h.fecha)}</div>
+      </div>
+      <div class="historial-detail">${h.descripcion||'—'}</div>
+      ${h.medico?`<div class="historial-medico">👨‍⚕️ ${h.medico}${h.lugar?' · '+h.lugar:''}</div>`:''}
+    </div>`).join('')}`;
+  el.querySelector('#btn-add-hist')?.addEventListener('click',()=>openModal('modal-historial'));
+}
+
+// ── PERFIL ────────────────────────────────────────────────
+function renderPerfil(){
+  const el=document.getElementById('page-perfil');
+  const p=perfilActivo;
+  if(!p){el.innerHTML=emptyHTML('👤','Sin perfil');return;}
+  el.innerHTML=`
+    <div class="card">
+      <div class="perfil-header">
+        <div class="perfil-avatar">${(p.nombre||'?').substring(0,2).toUpperCase()}</div>
+        <div>
+          <div class="perfil-nombre">${p.nombre||'—'}</div>
+          <div class="perfil-plan">Plan ${myDoc?.plan==='familiar'?'Familiar 👨‍👩‍👧':'Individual 👤'}</div>
+        </div>
+      </div>
+      <div class="perfil-dato-row"><span class="perfil-dato-label">Fecha de nacimiento</span><span class="perfil-dato-val">${fmtFecha(p.fechaNac)||'—'}</span></div>
+      <div class="perfil-dato-row"><span class="perfil-dato-label">Grupo sanguíneo</span><span class="perfil-dato-val">${p.grupoSanguineo||'—'}</span></div>
+      <div class="perfil-dato-row"><span class="perfil-dato-label">Alergias</span><span class="perfil-dato-val">${p.alergias||'Ninguna'}</span></div>
+      <div class="perfil-dato-row"><span class="perfil-dato-label">Medicación crónica</span><span class="perfil-dato-val">${p.medicacionCronica||'Ninguna'}</span></div>
+      <div class="perfil-dato-row"><span class="perfil-dato-label">Obra social / Prepaga</span><span class="perfil-dato-val">${p.obraSocial||'—'}</span></div>
+    </div>
+    ${myDoc?.plan==='familiar'?`
+    <div class="familiar-banner">
+      <div class="familiar-banner-text">
+        <h3>Plan Familiar activo</h3>
+        <p>Compartí tu código para invitar a un familiar</p>
+      </div>
+      <div class="familiar-banner-icon">👨‍👩‍👧</div>
+    </div>
+    <div class="invite-code-box">
+      <div class="invite-code-label">Tu código de invitación</div>
+      <div class="invite-code">${myDoc?.inviteCode||'———'}</div>
+    </div>`:''}
+    <div class="card">
+      <div class="card-title">⚙️ Cuenta</div>
+      <div class="perfil-dato-row"><span class="perfil-dato-label">Email</span><span class="perfil-dato-val">${me?.email||'—'}</span></div>
+    </div>
+    <button class="btn-sm danger" id="btn-logout-app" style="width:100%;justify-content:center;padding:13px;margin-top:8px">⏻ Cerrar sesión</button>`;
+  el.querySelector('#btn-logout-app')?.addEventListener('click',()=>signOut(auth));
+}
+
+// ── MODALES ───────────────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModalEl(id){document.getElementById(id).classList.remove('open');}
+
+// Modal estudio
+document.getElementById('btn-close-estudio').addEventListener('click',()=>closeModalEl('modal-estudio'));
+document.getElementById('btn-cancel-estudio').addEventListener('click',()=>closeModalEl('modal-estudio'));
+document.getElementById('modal-estudio').addEventListener('click',e=>{if(e.target.id==='modal-estudio')closeModalEl('modal-estudio');});
+document.getElementById('btn-save-estudio').addEventListener('click',async()=>{
+  const fecha=document.getElementById('e-fecha').value;
+  if(!fecha){toast('La fecha es obligatoria','err');return;}
+  const btn=document.getElementById('btn-save-estudio');btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    const nuevo={tipo:document.getElementById('e-tipo').value,fecha,laboratorio:document.getElementById('e-lab').value.trim(),medico:document.getElementById('e-medico').value.trim(),observaciones:document.getElementById('e-obs').value.trim(),link:document.getElementById('e-link').value.trim(),createdAt:serverTimestamp()};
+    const ref=await addDoc(collection(db,'perfiles',perfilActivo.id,'estudios'),nuevo);
+    estudios.unshift({id:ref.id,...nuevo});
+    closeModalEl('modal-estudio');toast('Estudio guardado','ok');renderEstudios();
+    ['e-fecha','e-lab','e-medico','e-obs','e-link'].forEach(id=>document.getElementById(id).value='');
+  }catch(e){toast('Error al guardar','err');}
+  btn.disabled=false;btn.textContent='Guardar estudio';
+});
+
+// Modal turno
+document.getElementById('btn-close-turno').addEventListener('click',()=>closeModalEl('modal-turno'));
+document.getElementById('btn-cancel-turno').addEventListener('click',()=>closeModalEl('modal-turno'));
+document.getElementById('modal-turno').addEventListener('click',e=>{if(e.target.id==='modal-turno')closeModalEl('modal-turno');});
+document.getElementById('btn-save-turno').addEventListener('click',async()=>{
+  const fecha=document.getElementById('t-fecha').value;const hora=document.getElementById('t-hora').value;
+  if(!fecha||!hora){toast('Fecha y hora son obligatorios','err');return;}
+  const btn=document.getElementById('btn-save-turno');btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    const nuevo={especialidad:document.getElementById('t-esp').value,medico:document.getElementById('t-medico').value.trim(),fecha,hora,lugar:document.getElementById('t-lugar').value.trim(),notas:document.getElementById('t-notas').value.trim(),createdAt:serverTimestamp()};
+    const ref=await addDoc(collection(db,'perfiles',perfilActivo.id,'turnos'),nuevo);
+    turnos.push({id:ref.id,...nuevo});
+    closeModalEl('modal-turno');toast('Turno agendado','ok');renderTurnos();
+    ['t-medico','t-fecha','t-hora','t-lugar','t-notas'].forEach(id=>document.getElementById(id).value='');
+  }catch(e){toast('Error al guardar','err');}
+  btn.disabled=false;btn.textContent='Guardar turno';
+});
+
+// Modal médico
+document.getElementById('btn-close-medico').addEventListener('click',()=>closeModalEl('modal-medico'));
+document.getElementById('btn-cancel-medico').addEventListener('click',()=>closeModalEl('modal-medico'));
+document.getElementById('modal-medico').addEventListener('click',e=>{if(e.target.id==='modal-medico')closeModalEl('modal-medico');});
+document.getElementById('btn-save-medico').addEventListener('click',async()=>{
+  const nombre=document.getElementById('m-nombre').value.trim();const esp=document.getElementById('m-esp').value.trim();
+  if(!nombre||!esp){toast('Nombre y especialidad son obligatorios','err');return;}
+  const btn=document.getElementById('btn-save-medico');btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    const nuevo={nombre,especialidad:esp,telefono:document.getElementById('m-tel').value.trim(),obraSocial:document.getElementById('m-os').value.trim(),direccion:document.getElementById('m-dir').value.trim(),notas:document.getElementById('m-notas').value.trim(),createdAt:serverTimestamp()};
+    const ref=await addDoc(collection(db,'perfiles',perfilActivo.id,'medicos'),nuevo);
+    medicos.push({id:ref.id,...nuevo});
+    closeModalEl('modal-medico');toast('Médico guardado','ok');renderDirectorio();
+    ['m-nombre','m-esp','m-tel','m-os','m-dir','m-notas'].forEach(id=>document.getElementById(id).value='');
+  }catch(e){toast('Error al guardar','err');}
+  btn.disabled=false;btn.textContent='Guardar médico';
+});
+
+// Modal historial
+document.getElementById('btn-close-hist').addEventListener('click',()=>closeModalEl('modal-historial'));
+document.getElementById('btn-cancel-hist').addEventListener('click',()=>closeModalEl('modal-historial'));
+document.getElementById('modal-historial').addEventListener('click',e=>{if(e.target.id==='modal-historial')closeModalEl('modal-historial');});
+document.getElementById('btn-save-hist').addEventListener('click',async()=>{
+  const fecha=document.getElementById('h-fecha').value;const desc=document.getElementById('h-desc').value.trim();
+  if(!fecha||!desc){toast('Fecha y descripción son obligatorios','err');return;}
+  const btn=document.getElementById('btn-save-hist');btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    const nuevo={tipo:document.getElementById('h-tipo').value,fecha,medico:document.getElementById('h-medico').value.trim(),descripcion:desc,lugar:document.getElementById('h-lugar').value.trim(),createdAt:serverTimestamp()};
+    const ref=await addDoc(collection(db,'perfiles',perfilActivo.id,'historial'),nuevo);
+    historial.unshift({id:ref.id,...nuevo});
+    closeModalEl('modal-historial');toast('Registro guardado','ok');renderHistorial();
+    ['h-fecha','h-medico','h-desc','h-lugar'].forEach(id=>document.getElementById(id).value='');
+  }catch(e){toast('Error al guardar','err');}
+  btn.disabled=false;btn.textContent='Guardar registro';
+});
+</script>
+
+<!--
+FIRESTORE SECURITY RULES
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /usuarios/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['banned']);
+      allow delete: if false;
+    }
+
+    match /perfiles/{perfilId} {
+      allow read: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+
+      match /estudios/{id}  { allow read, write: if request.auth != null; }
+      match /turnos/{id}    { allow read, write: if request.auth != null; }
+      match /medicos/{id}   { allow read, write: if request.auth != null; }
+      match /historial/{id} { allow read, write: if request.auth != null; }
+    }
+  }
+}
+
+ÍNDICES COMPUESTOS
+1. perfiles | ownerUid ASC, createdAt DESC
+2. perfiles/{id}/estudios | fecha DESC
+3. perfiles/{id}/turnos | fecha ASC
+4. perfiles/{id}/historial | fecha DESC
+-->
+</body>
+</html>
