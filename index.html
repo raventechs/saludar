@@ -734,7 +734,7 @@ function renderInicio(){
   const proxTurno=turnos.filter(t=>new Date(t.fecha+'T00:00:00')>=new Date()).sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
   el.innerHTML=`
     <div class="card">
-      <div class="wellness-greeting">${hora<12?'Buenos días':hora<18?'Buenas tardes':'Buenas noches'}, ${perfilActivo?.nombre?.split(' ')[0]||''}! 👋</div>
+      <div class="wellness-greeting">${hora<12?'Buenos d\u00edas':hora<18?'Buenas tardes':'Buenas noches'}, ${perfilActivo?.nombre?.split(' ')[0]||''}! 👋</div>
       <div class="wellness-date">${new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})}</div>
       <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
       <div class="progress-label">${done} de ${WELLNESS_ITEMS.length} hábitos completados hoy · ${pct}%</div>
