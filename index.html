@@ -263,6 +263,25 @@ input,select,button,textarea{font-family:var(--font)}
 .demo-badge.activa{background:#fef3c7;color:var(--warn)}
 .demo-badge.vencida{background:var(--red-bg);color:var(--red)}
 .demo-badge.completa{background:var(--green-bg);color:var(--green)}
+
+/* ══ MEDICACION ══════════════════════════════════════ */
+.med-item{display:flex;align-items:center;gap:12px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all .2s;box-shadow:var(--shadow)}
+.med-item.tomado{border-color:var(--green);background:var(--green-bg)}
+.med-check{width:28px;height:28px;border-radius:50%;border:2.5px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;transition:all .2s}
+.med-item.tomado .med-check{background:var(--green);border-color:var(--green);color:#fff}
+.med-info{flex:1}
+.med-nombre{font-size:15px;font-weight:700;color:var(--text)}
+.med-item.tomado .med-nombre{color:var(--green);text-decoration:line-through}
+.med-dosis{font-size:12px;color:var(--muted);margin-top:2px}
+.med-horario-chip{background:var(--navy);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;flex-shrink:0}
+[data-theme="dark"] .med-horario-chip{background:#1e3a5f}
+.med-item.tomado .med-horario-chip{background:var(--green)}
+.med-card-list{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow)}
+.med-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.med-card-nombre{font-size:15px;font-weight:700;color:var(--text)}
+.med-card-sub{font-size:12px;color:var(--muted)}
+.med-card-horarios{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.med-h-chip{background:var(--surface2);border:1px solid var(--border);font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;color:var(--text)}
 </style>
 </head>
 <body>
@@ -319,18 +338,18 @@ input,select,button,textarea{font-family:var(--font)}
   <div class="profile-bar" id="profile-bar"></div>
   <div class="app-body">
     <div id="page-inicio" class="page active"></div>
+    <div id="page-medicacion" class="page"></div>
     <div id="page-estudios" class="page"></div>
     <div id="page-turnos" class="page"></div>
     <div id="page-directorio" class="page"></div>
-    <div id="page-historial" class="page"></div>
     <div id="page-perfil" class="page"></div>
   </div>
   <div class="bottom-nav">
     <div class="nav-item active" data-page="inicio"><span class="nav-icon">🏠</span>Inicio</div>
+    <div class="nav-item" data-page="medicacion"><span class="nav-icon">💊</span>Medicación</div>
     <div class="nav-item" data-page="estudios"><span class="nav-icon">🧪</span>Estudios</div>
     <div class="nav-item" data-page="turnos"><span class="nav-icon">📅</span>Turnos</div>
     <div class="nav-item" data-page="directorio"><span class="nav-icon">👨‍⚕️</span>Médicos</div>
-    <div class="nav-item" data-page="historial"><span class="nav-icon">📋</span>Historial</div>
     <div class="nav-item" data-page="perfil"><span class="nav-icon">👤</span>Perfil</div>
   </div>
 </div>
@@ -401,6 +420,19 @@ input,select,button,textarea{font-family:var(--font)}
   </div>
 </div>
 
+<!-- MODAL MEDICACION -->
+<div class="modal-overlay" id="modal-medicacion">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">💊 Agregar medicamento</span><button class="modal-close" id="close-med">✕</button></div>
+    <div class="field"><label>Nombre del medicamento *</label><input id="med-nombre" placeholder="Ej: Enalapril 10mg"/></div>
+    <div class="field"><label>Dosis</label><input id="med-dosis" placeholder="Ej: 1 comprimido"/></div>
+    <div class="field"><label>Horarios (separados por coma) *</label><input id="med-horarios" placeholder="Ej: 08:00, 20:00"/></div>
+    <div class="field"><label>Indicaciones</label><input id="med-indicaciones" placeholder="Ej: Con el desayuno"/></div>
+    <div class="field"><label>Días de la semana</label><select id="med-frecuencia"><option value="todos">Todos los días</option><option value="laboral">Días hábiles (Lun-Vie)</option><option value="semana">Lunes, Miércoles y Viernes</option><option value="finde">Fines de semana</option></select></div>
+    <div class="modal-footer"><button class="btn-cancel" id="cancel-med">Cancelar</button><button class="btn-save" id="save-med">Guardar</button></div>
+  </div>
+</div>
+
 <!-- PIN -->
 <div class="pin-overlay" id="pin-overlay">
   <div class="pin-modal">
@@ -452,7 +484,7 @@ const db=getFirestore(fbApp);
 
 let me=null,myDoc=null;
 let perfiles=[],perfilActivo=null;
-let estudios=[],turnos=[],medicos=[],historial=[];
+let estudios=[],turnos=[],medicos=[],historial=[],medicamentos=[];
 let isRegister=false,planSelected="individual";
 let logoTaps=0,logoTimer=null,pinBuf="";
 let currentPage="inicio";
@@ -827,16 +859,54 @@ function renderProfileBar(){
 async function loadPerfilData(){
   if(!perfilActivo)return;
   const pid=perfilActivo.id;
-  const [eSnap,tSnap,mSnap,hSnap]=await Promise.all([
+  const [eSnap,tSnap,mSnap,hSnap,medSnap]=await Promise.all([
     getDocs(query(collection(db,"perfiles",pid,"estudios"),orderBy("fecha","desc"))),
     getDocs(query(collection(db,"perfiles",pid,"turnos"),orderBy("fecha","asc"))),
     getDocs(query(collection(db,"perfiles",pid,"medicos"),orderBy("nombre","asc"))),
-    getDocs(query(collection(db,"perfiles",pid,"historial"),orderBy("fecha","desc")))
+    getDocs(query(collection(db,"perfiles",pid,"historial"),orderBy("fecha","desc"))),
+    getDocs(query(collection(db,"perfiles",pid,"medicamentos"),orderBy("nombre","asc")))
   ]);
   estudios=eSnap.docs.map(d=>({id:d.id,...d.data()}));
   turnos=tSnap.docs.map(d=>({id:d.id,...d.data()}));
   medicos=mSnap.docs.map(d=>({id:d.id,...d.data()}));
   historial=hSnap.docs.map(d=>({id:d.id,...d.data()}));
+  medicamentos=medSnap.docs.map(d=>({id:d.id,...d.data()}));
+  // Reset automático a medianoche: limpiar tomas del día anterior
+  resetTomaSiNuevoDia();
+}
+
+// ── TOMAS DEL DÍA (reset automático a medianoche) ────────
+const TOMAS_KEY="saludar-tomas";
+let tomasHoy={};
+
+function hoyStr(){return new Date().toISOString().split("T")[0];}
+
+function resetTomaSiNuevoDia(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(TOMAS_KEY)||"{}");
+    if(saved.fecha===hoyStr()){
+      tomasHoy=saved.tomas||{};
+    } else {
+      tomasHoy={};
+      localStorage.setItem(TOMAS_KEY,JSON.stringify({fecha:hoyStr(),tomas:{}}));
+    }
+  }catch(e){tomasHoy={};}
+}
+
+function saveTomas(){
+  localStorage.setItem(TOMAS_KEY,JSON.stringify({fecha:hoyStr(),tomas:tomasHoy}));
+}
+
+function getMedsDelDia(){
+  const dia=new Date().getDay(); // 0=dom,1=lun...6=sab
+  return medicamentos.filter(m=>{
+    const f=m.frecuencia||"todos";
+    if(f==="todos")return true;
+    if(f==="laboral")return dia>=1&&dia<=5;
+    if(f==="semana")return dia===1||dia===3||dia===5;
+    if(f==="finde")return dia===0||dia===6;
+    return true;
+  });
 }
 
 function renderPage(page){
@@ -845,10 +915,10 @@ function renderPage(page){
   document.getElementById("page-"+page).classList.add("active");
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active",n.dataset.page===page));
   if(page==="inicio")renderInicio();
+  else if(page==="medicacion")renderMedicacion();
   else if(page==="estudios")renderEstudios();
   else if(page==="turnos")renderTurnos();
   else if(page==="directorio")renderDirectorio();
-  else if(page==="historial")renderHistorial();
   else if(page==="perfil")renderPerfil();
 }
 document.querySelectorAll(".nav-item[data-page]").forEach(n=>n.addEventListener("click",()=>renderPage(n.dataset.page)));
@@ -857,27 +927,64 @@ function renderInicio(){
   const el=document.getElementById("page-inicio");
   const hora=new Date().getHours();
   const saludo=hora<12?"Buenos días":hora<18?"Buenas tardes":"Buenas noches";
-  const done=WELLNESS.filter(i=>wellnessCheck[i.id]).length;
-  const pct=Math.round(done/WELLNESS.length*100);
   const prox=turnos.filter(t=>new Date(t.fecha+"T00:00:00")>=new Date()).sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
+  const medsHoy=getMedsDelDia();
+  const totalTomas=medsHoy.reduce((acc,m)=>{const hs=(m.horarios||"").split(",").map(h=>h.trim()).filter(Boolean);return acc+hs.length;},0);
+  const tomadasCount=Object.values(tomasHoy).filter(Boolean).length;
+  const pctMeds=totalTomas>0?Math.round(tomadasCount/totalTomas*100):100;
+
+  // Expandir meds por horario
+  let medsExpandidos=[];
+  medsHoy.forEach(m=>{
+    const hs=(m.horarios||"").split(",").map(h=>h.trim()).filter(Boolean);
+    if(hs.length===0){
+      medsExpandidos.push({...m,horario:"—",key:m.id+"_0"});
+    } else {
+      hs.forEach((h,i)=>medsExpandidos.push({...m,horario:h,key:m.id+"_"+i}));
+    }
+  });
+  medsExpandidos.sort((a,b)=>a.horario.localeCompare(b.horario));
+
   el.innerHTML=`
-    <div class="card">
-      <div class="wellness-greeting">${saludo}, ${perfilActivo?.nombre?.split(" ")[0]||""}! 👋</div>
-      <div class="wellness-date">${new Date().toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"})}</div>
-      <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
-      <div class="progress-label">${done} de ${WELLNESS.length} hábitos completados · ${pct}%</div>
-      <div class="checklist">
-        ${WELLNESS.map(item=>`<div class="check-item${wellnessCheck[item.id]?" done":""}" data-wid="${item.id}">
-          <div class="check-circle">${wellnessCheck[item.id]?"✓":""}</div>
-          <span class="check-label">${item.icon} ${item.label}</span>
-        </div>`).join("")}
-      </div>
+    <div style="padding:4px 0 2px;font-size:13px;font-weight:700;color:var(--text)">
+      ${new Date().toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"})}
     </div>
+    <div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:12px">${saludo}, ${perfilActivo?.nombre?.split(" ")[0]||""}! 👋</div>
+
+    ${medsHoy.length>0?`
+    <div class="card" style="margin-bottom:12px">
+      <div class="sec-header" style="margin-bottom:10px">
+        <span class="card-title" style="margin-bottom:0">💊 Medicación de hoy</span>
+        <span style="font-size:12px;color:var(--muted)">${tomadasCount}/${totalTomas} tomadas</span>
+      </div>
+      <div class="progress-bar-wrap" style="margin-bottom:12px"><div class="progress-bar" style="width:${pctMeds}%"></div></div>
+      <div id="med-checklist">
+        ${medsExpandidos.map(m=>{
+          const tomado=!!tomasHoy[m.key];
+          return`<div class="med-item${tomado?" tomado":""}" data-mkey="${m.key}">
+            <div class="med-check">${tomado?"✓":""}</div>
+            <div class="med-info">
+              <div class="med-nombre">${m.nombre}</div>
+              <div class="med-dosis">${m.dosis||""}${m.indicaciones?" · "+m.indicaciones:""}</div>
+            </div>
+            <div class="med-horario-chip">${m.horario}</div>
+          </div>`;
+        }).join("")}
+      </div>
+      <button class="btn-sm" id="btn-agregar-med-home" style="margin-top:10px;width:100%;justify-content:center">+ Agregar medicamento</button>
+    </div>`:`
+    <div class="card" style="text-align:center;padding:20px;margin-bottom:12px">
+      <div style="font-size:32px;margin-bottom:8px">💊</div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:10px">No hay medicamentos cargados</div>
+      <button class="btn-sm gold" id="btn-agregar-med-home" style="margin:0 auto;display:flex">＋ Agregar medicamento</button>
+    </div>`}
+
     <div class="stats-row">
       <div class="stat-card"><div class="stat-icon">🧪</div><div class="stat-val">${estudios.length}</div><div class="stat-lbl">Estudios</div></div>
       <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-val">${turnos.filter(t=>new Date(t.fecha+"T00:00:00")>=new Date()).length}</div><div class="stat-lbl">Turnos</div></div>
       <div class="stat-card"><div class="stat-icon">👨‍⚕️</div><div class="stat-val">${medicos.length}</div><div class="stat-lbl">Médicos</div></div>
     </div>
+
     ${prox?`<div class="card"><div class="card-title">📅 Próximo turno</div>
       <div class="turno-item" style="box-shadow:none;border:none;padding:0;margin:0">
         <div class="turno-fecha-box"><div class="turno-dia-num">${prox.fecha.split("-")[2]}</div><div class="turno-mes">${MESES[parseInt(prox.fecha.split("-")[1])-1]}</div></div>
@@ -885,11 +992,60 @@ function renderInicio(){
         <span class="badge badge-blue">${diasRestantes(prox.fecha)===0?"Hoy":"En "+diasRestantes(prox.fecha)+"d"}</span>
       </div>
     </div>`:
-    `<div class="card" style="text-align:center;padding:20px"><div style="font-size:32px;margin-bottom:8px">📅</div><div style="font-size:14px;color:var(--muted)">Sin turnos próximos</div><button class="btn-sm gold" id="btn-turno-home" style="margin:12px auto 0;display:flex">＋ Agendar turno</button></div>`}`;
+    `<div class="card" style="text-align:center;padding:20px"><div style="font-size:32px;margin-bottom:8px">📅</div><div style="font-size:14px;color:var(--muted)">Sin turnos próximos</div><button class="btn-sm gold" id="btn-turno-home" style="margin:12px auto 0;display:flex">＋ Agendar turno</button></div>`}
+
+    <div class="card" style="margin-top:4px">
+      <div class="card-title">🌿 Hábitos del día</div>
+      <div class="checklist">
+        ${WELLNESS.map(item=>`<div class="check-item${wellnessCheck[item.id]?" done":""}" data-wid="${item.id}">
+          <div class="check-circle">${wellnessCheck[item.id]?"✓":""}</div>
+          <span class="check-label">${item.icon} ${item.label}</span>
+        </div>`).join("")}
+      </div>
+    </div>`;
+
+  el.querySelectorAll(".med-item[data-mkey]").forEach(item=>{
+    item.addEventListener("click",()=>{
+      const k=item.dataset.mkey;
+      tomasHoy[k]=!tomasHoy[k];
+      saveTomas();
+      renderInicio();
+    });
+  });
+  el.querySelector("#btn-agregar-med-home")?.addEventListener("click",()=>openModal("modal-medicacion"));
   el.querySelectorAll(".check-item[data-wid]").forEach(item=>{
     item.addEventListener("click",()=>{wellnessCheck[item.dataset.wid]=!wellnessCheck[item.dataset.wid];renderInicio();});
   });
   el.querySelector("#btn-turno-home")?.addEventListener("click",()=>openModal("modal-turno"));
+}
+
+// ── MEDICACION PAGE ───────────────────────────────────────
+function renderMedicacion(){
+  const el=document.getElementById("page-medicacion");
+  el.innerHTML=`<div class="sec-header"><span class="sec-title" style="font-size:17px">Mis medicamentos</span><button class="btn-sm gold" id="btn-add-med">＋ Agregar</button></div>
+  ${medicamentos.length===0?emptyHTML("💊","Sin medicamentos","Cargá los medicamentos que tomás a diario"):
+  medicamentos.map(m=>{
+    const hs=(m.horarios||"").split(",").map(h=>h.trim()).filter(Boolean);
+    return`<div class="med-card-list">
+      <div class="med-card-header">
+        <div class="med-card-nombre">💊 ${m.nombre}</div>
+        <button class="btn-sm danger" style="padding:4px 10px;font-size:11px" data-del-med="${m.id}">Eliminar</button>
+      </div>
+      <div class="med-card-sub">${m.dosis||""}${m.indicaciones?" · "+m.indicaciones:""}</div>
+      <div class="med-card-sub" style="margin-top:2px">📅 ${m.frecuencia==="todos"||!m.frecuencia?"Todos los días":m.frecuencia==="laboral"?"Días hábiles":m.frecuencia==="semana"?"Lun / Mié / Vie":"Fines de semana"}</div>
+      <div class="med-card-horarios">${hs.length>0?hs.map(h=>`<span class="med-h-chip">🕐 ${h}</span>`).join(""):"<span class='med-h-chip'>Sin horario</span>"}</div>
+    </div>`;
+  }).join("")}`;
+  el.querySelector("#btn-add-med")?.addEventListener("click",()=>openModal("modal-medicacion"));
+  el.querySelectorAll("[data-del-med]").forEach(btn=>{
+    btn.addEventListener("click",async()=>{
+      if(!confirm("¿Eliminar este medicamento?"))return;
+      await deleteDoc(doc(db,"perfiles",perfilActivo.id,"medicamentos",btn.dataset.delMed));
+      medicamentos=medicamentos.filter(m=>m.id!==btn.dataset.delMed);
+      toast("Medicamento eliminado","ok");
+      renderMedicacion();
+    });
+  });
 }
 
 function renderEstudios(){
@@ -1019,6 +1175,37 @@ function bindModal(modalId,closeId,cancelId,saveId,campos,coleccion,onSave){
     btn.disabled=false;btn.textContent="Guardar";
   });
 }
+
+// ── MODAL MEDICACION ──────────────────────────────────────
+document.getElementById("close-med").addEventListener("click",()=>closeModal("modal-medicacion"));
+document.getElementById("cancel-med").addEventListener("click",()=>closeModal("modal-medicacion"));
+document.getElementById("modal-medicacion").addEventListener("click",e=>{if(e.target.id==="modal-medicacion")closeModal("modal-medicacion");});
+document.getElementById("save-med").addEventListener("click",async()=>{
+  if(!perfilActivo){toast("Sin perfil activo","err");return;}
+  const nombre=document.getElementById("med-nombre").value.trim();
+  const horarios=document.getElementById("med-horarios").value.trim();
+  if(!nombre||!horarios){toast("Nombre y horarios son obligatorios","err");return;}
+  const data={
+    nombre,
+    dosis:document.getElementById("med-dosis").value.trim(),
+    horarios,
+    indicaciones:document.getElementById("med-indicaciones").value.trim(),
+    frecuencia:document.getElementById("med-frecuencia").value,
+    createdAt:serverTimestamp()
+  };
+  const btn=document.getElementById("save-med");btn.disabled=true;btn.textContent="Guardando...";
+  try{
+    const ref=await addDoc(collection(db,"perfiles",perfilActivo.id,"medicamentos"),data);
+    medicamentos.push({id:ref.id,...data});
+    closeModal("modal-medicacion");
+    toast("Medicamento guardado","ok");
+    ["med-nombre","med-dosis","med-horarios","med-indicaciones"].forEach(id=>document.getElementById(id).value="");
+    document.getElementById("med-frecuencia").value="todos";
+    if(currentPage==="medicacion")renderMedicacion();
+    else renderInicio();
+  }catch(e){toast("Error al guardar","err");}
+  btn.disabled=false;btn.textContent="Guardar";
+});
 
 bindModal("modal-estudio","close-estudio","cancel-estudio","save-estudio",[
   {id:"e-fecha",key:"fecha",label:"La fecha",required:true},
