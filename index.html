@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content="Gestión de medicación, turnos y salud familiar.">
+<meta name="theme-color" content="#0f1e3d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SaludAR">
 <title>SaludAR</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
@@ -456,7 +462,7 @@ input,select,button,textarea{font-family:var(--font)}
     <div class="demo-wall-icon">⏳</div>
     <div class="demo-wall-title">Tu demo de 24hs terminó</div>
     <div class="demo-wall-sub">Gracias por probar SaludAR. Para continuar usando la app, contactanos y te activamos tu cuenta.</div>
-    <a id="btn-demo-email" href="mailto:raventechs@gmail.com?subject=Quiero activar SaludAR&body=Hola, probé la demo y me interesa continuar." class="btn-contact-email">✉️ Contactar por email</a>
+    <a id="btn-demo-email" href="mailto:ventas@raventechsapp.com?subject=Quiero activar SaludAR&body=Hola, probé la demo y me interesa continuar." class="btn-contact-email">✉️ Contactar por email</a>
     <button class="demo-logout" id="btn-demo-logout">Cerrar sesión</button>
   </div>
 </div>
@@ -481,6 +487,8 @@ const ADMIN_PIN="1990";
 const fbApp=initializeApp(FB);
 const auth=getAuth(fbApp);
 const db=getFirestore(fbApp);
+
+function sanitizeHTML(str){const d=document.createElement('div');d.textContent=str??"";return d.innerHTML;}
 
 let me=null,myDoc=null;
 let perfiles=[],perfilActivo=null;
@@ -601,7 +609,7 @@ async function loadAdminPerfiles(){
   c.innerHTML='<div class="loading-wrap"><div class="spinner"></div></div>';
   const snap=await getDocs(collection(db,"perfiles"));
   if(snap.empty){c.innerHTML=emptyHTML("🩺","Sin perfiles");return;}
-  c.innerHTML=snap.docs.map(d=>{const p=d.data();return`<div class="admin-card"><div class="admin-card-title">${p.nombre||"—"}</div><div class="admin-card-sub">Titular: ${p.titularUid||"—"}</div><div class="admin-card-actions"><button class="btn-adel" data-pid="${d.id}">🗑️ Eliminar</button></div></div>`;}).join("");
+  c.innerHTML=snap.docs.map(d=>{const p=d.data();return`<div class="admin-card"><div class="admin-card-title">${sanitizeHTML(p.nombre||"—")}</div><div class="admin-card-sub">Titular: ${sanitizeHTML(p.titularUid||"—")}</div><div class="admin-card-actions"><button class="btn-adel" data-pid="${d.id}">🗑️ Eliminar</button></div></div>`;}).join("");
 }
 document.getElementById("admin-users-list").addEventListener("click",async e=>{
   const ban=e.target.closest(".btn-aban");
@@ -976,7 +984,7 @@ function renderInicio(){
     <div class="card" style="text-align:center;padding:20px;margin-bottom:12px">
       <div style="font-size:32px;margin-bottom:8px">💊</div>
       <div style="font-size:14px;color:var(--muted);margin-bottom:10px">No hay medicamentos cargados</div>
-      <button class="btn-sm gold" id="btn-agregar-med-home" style="margin:0 auto;display:flex">＋ Agregar medicamento</button>
+      <button class="btn-sm gold" id="btn-agregar-med-home-empty" style="margin:0 auto;display:flex">＋ Agregar medicamento</button>
     </div>`}
 
     <div class="stats-row">
@@ -1013,6 +1021,7 @@ function renderInicio(){
     });
   });
   el.querySelector("#btn-agregar-med-home")?.addEventListener("click",()=>openModal("modal-medicacion"));
+  el.querySelector("#btn-agregar-med-home-empty")?.addEventListener("click",()=>openModal("modal-medicacion"));
   el.querySelectorAll(".check-item[data-wid]").forEach(item=>{
     item.addEventListener("click",()=>{wellnessCheck[item.dataset.wid]=!wellnessCheck[item.dataset.wid];renderInicio();});
   });
