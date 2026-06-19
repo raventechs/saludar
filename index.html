@@ -37,6 +37,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 input,select,button,textarea{font-family:var(--font)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes heartbeat{0%,100%{transform:scale(1)}15%{transform:scale(1.25)}30%{transform:scale(1)}45%{transform:scale(1.15)}60%{transform:scale(1)}}
 
 .screen{display:none;min-height:100vh;flex-direction:column}
 .screen.active{display:flex}
@@ -325,7 +326,16 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
 <body>
 
 <!-- LOGIN -->
-<div id="screen-login" class="screen active">
+<!-- LOADING -->
+<div id="screen-loading" class="screen active" style="align-items:center;justify-content:center;background:linear-gradient(145deg,var(--navy),#1a3060)">
+  <div style="text-align:center">
+    <div style="font-size:48px;margin-bottom:14px;animation:heartbeat 1.1s ease-in-out infinite">❤️</div>
+    <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:4px">Salud<span style="color:var(--gold)">AR</span></div>
+    <div style="font-size:13px;color:rgba(255,255,255,.6)">Cargando tu información...</div>
+  </div>
+</div>
+
+<div id="screen-login" class="screen">
   <div class="auth-card">
     <div class="brand-row">
       <div class="brand-icon" id="login-logo">🩺</div>
@@ -346,7 +356,7 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
       </div>
     </div>
     <div class="invite-info" id="invite-info">
-      🔗 Ingresá el código del titular para vincularte a su cuenta familiar
+      👨‍👩‍👧 Con el Plan Familiar vas a poder invitar a otras personas desde tu Perfil, una vez registrado
     </div>
     <button class="btn-primary" id="btn-google" style="background:#fff;color:#0f1e3d;border:2px solid #dde1ec;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px">
       <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.04a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.48A4.8 4.8 0 0 1 4.5 7.5V5.43H1.83a8 8 0 0 0 0 7.14l2.67-2.09z"/><path fill="#EA4335" d="M8.98 3.58c1.32 0 2.5.45 3.44 1.35l2.54-2.54A8 8 0 0 0 1.83 5.43L4.5 7.5c.66-1.97 2.49-3.92 4.48-3.92z"/></svg>
@@ -357,7 +367,6 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
     <div class="field"><label>Email</label><input id="f-email" type="email" placeholder="tu@email.com"/></div>
     <div class="field"><label>Contraseña</label><input id="f-pass" type="password" placeholder="••••••••"/></div>
     <div class="field hf" id="field-nombre"><label>Tu nombre completo</label><input id="f-nombre" placeholder="Juan García"/></div>
-    <div class="field hf" id="field-invite"><label>Código de invitación (para vincularte a un familiar)</label><input id="f-invite" placeholder="ABC123 — dejá vacío si sos titular"/></div>
     <button class="btn-primary" id="btn-auth">Ingresar →</button>
     <div class="auth-toggle"><span id="toggle-mode">Registrarse</span></div>
   </div>
@@ -402,7 +411,7 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
 <div id="screen-app" class="screen">
   <div class="app-header">
     <div class="app-header-brand" id="app-logo">Salud<span>AR</span></div>
-    <div class="app-header-right">
+    <div class="app-header-right" id="app-header-right">
       <span class="plan-tag" id="plan-tag">Individual</span>
       <button class="icon-btn" id="btn-theme-app">🌙</button>
       <div class="avatar-sm" id="app-avatar">U</div>
@@ -415,14 +424,16 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
     <div id="page-estudios" class="page"></div>
     <div id="page-turnos" class="page"></div>
     <div id="page-directorio" class="page"></div>
+    <div id="page-historial" class="page"></div>
     <div id="page-perfil" class="page"></div>
   </div>
   <div class="bottom-nav">
     <div class="nav-item active" data-page="inicio"><span class="nav-icon">🏠</span>Inicio</div>
-    <div class="nav-item" data-page="medicacion"><span class="nav-icon">💊</span>Medicación</div>
+    <div class="nav-item" data-page="medicacion"><span class="nav-icon">💊</span>Medic.</div>
     <div class="nav-item" data-page="estudios"><span class="nav-icon">🧪</span>Estudios</div>
     <div class="nav-item" data-page="turnos"><span class="nav-icon">📅</span>Turnos</div>
     <div class="nav-item" data-page="directorio"><span class="nav-icon">👨‍⚕️</span>Médicos</div>
+    <div class="nav-item" data-page="historial"><span class="nav-icon">📋</span>Historial</div>
     <div class="nav-item" data-page="perfil"><span class="nav-icon">👤</span>Perfil</div>
   </div>
 </div>
@@ -483,6 +494,17 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
     <div class="field"><label>Lugar / Clínica</label><input id="t-lugar" placeholder="Clínica San Martín"/></div>
     <div class="field"><label>Notas</label><textarea id="t-notas" rows="2" placeholder="Llevar estudios, en ayunas..."></textarea></div>
     <div class="modal-footer"><button class="btn-cancel" id="cancel-turno">Cancelar</button><button class="btn-save" id="save-turno">Guardar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-perfil-datos">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">📝 Editar datos de salud</span><button class="modal-close" id="close-perfil-datos">✕</button></div>
+    <div class="field-row"><div class="field"><label>Fecha de nacimiento</label><input id="pd-fechaNac" type="date"/></div><div class="field"><label>Grupo sanguíneo</label><select id="pd-grupoSanguineo"><option value="">—</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div></div>
+    <div class="field"><label>Alergias</label><textarea id="pd-alergias" rows="2" placeholder="Penicilina, polen, ninguna..."></textarea></div>
+    <div class="field"><label>Medicación crónica</label><textarea id="pd-medicacionCronica" rows="2" placeholder="Detalle de medicación habitual..."></textarea></div>
+    <div class="field"><label>Obra social / Prepaga</label><input id="pd-obraSocial" placeholder="OSDE, Swiss Medical, particular..."/></div>
+    <div class="modal-footer"><button class="btn-cancel" id="cancel-perfil-datos">Cancelar</button><button class="btn-save" id="save-perfil-datos">Guardar</button></div>
   </div>
 </div>
 
@@ -554,7 +576,7 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut,GoogleAuthProvider,signInWithPopup}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import{getFirestore,collection,doc,setDoc,addDoc,getDocs,getDoc,updateDoc,deleteDoc,query,where,orderBy,serverTimestamp,Timestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getFirestore,collection,collectionGroup,doc,setDoc,addDoc,getDocs,getDoc,updateDoc,deleteDoc,query,where,orderBy,serverTimestamp,Timestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const FB={
   apiKey:"AIzaSyAl_gMgQoZa6F-tInkoc61AA8ggzMhlRPY",
@@ -752,7 +774,6 @@ function toast(msg,type=""){
 function emptyHTML(icon,msg,sub=""){return`<div class="empty"><div class="empty-icon">${icon}</div><div class="empty-msg">${msg}</div>${sub?`<div class="empty-sub">${sub}</div>`:""}</div>`;}
 function fmtFecha(str){if(!str)return"—";const[y,m,d]=str.split("-");return`${d} ${MESES[parseInt(m)-1]} ${y}`;}
 function diasRestantes(str){if(!str)return null;return Math.ceil((new Date(str+"T00:00:00")-new Date())/86400000);}
-function genCode(){return Math.random().toString(36).substring(2,8).toUpperCase();}
 function openModal(id){document.getElementById(id).classList.add("open");}
 function closeModal(id){document.getElementById(id).classList.remove("open");}
 
@@ -928,16 +949,14 @@ onAuthStateChanged(auth,async user=>{
     if(!snap.exists()){
       // Nuevo usuario (Google o email) — crear con demo activa
       const nombre=user.displayName||user.email.split("@")[0];
-      const code=genCode();
       await setDoc(userRef,{
         uid:user.uid,email:user.email,nombre,plan:"individual",
-        inviteCode:code,esFamiliar:false,banned:false,
+        esFamiliar:false,banned:false,
         status:"demo",demoStart:serverTimestamp(),
         createdAt:serverTimestamp()
       });
       await addDoc(collection(db,"perfiles"),{
         titularUid:user.uid,titularNombre:nombre,
-        familiarUid:null,familiarNombre:null,
         nombre,fechaNac:"",grupoSanguineo:"",
         alergias:"",medicacionCronica:"",obraSocial:"",
         createdAt:serverTimestamp()
@@ -968,14 +987,12 @@ document.getElementById("plan-individual").addEventListener("click",()=>{
   planSelected="individual";
   document.getElementById("plan-individual").classList.add("active");
   document.getElementById("plan-familiar").classList.remove("active");
-  document.getElementById("field-invite").classList.add("hf");
   document.getElementById("invite-info").classList.remove("show");
 });
 document.getElementById("plan-familiar").addEventListener("click",()=>{
   planSelected="familiar";
   document.getElementById("plan-familiar").classList.add("active");
   document.getElementById("plan-individual").classList.remove("active");
-  document.getElementById("field-invite").classList.remove("hf");
   document.getElementById("invite-info").classList.add("show");
 });
 document.getElementById("toggle-mode").addEventListener("click",()=>{
@@ -998,50 +1015,19 @@ document.getElementById("btn-auth").addEventListener("click",async()=>{
   try{
     if(isRegister){
       const nombre=document.getElementById("f-nombre").value.trim()||email.split("@")[0];
-      const inviteInput=document.getElementById("f-invite").value.trim().toUpperCase();
       const cred=await createUserWithEmailAndPassword(auth,email,pass);
-      if(planSelected==="familiar"&&inviteInput){
-        const titularSnap=await getDocs(query(collection(db,"usuarios"),where("inviteCode","==",inviteInput),where("plan","==","familiar")));
-        if(titularSnap.empty){
-          errEl.textContent="Código de invitación no válido o expirado";
-          errEl.style.display="block";errEl.classList.add("show");
-          btn.disabled=false;btn.textContent="Crear cuenta →";
-          await signOut(auth);return;
-        }
-        const titularDoc=titularSnap.docs[0];
-        const titularData=titularDoc.data();
-        const yaVinculado=await getDocs(query(collection(db,"usuarios"),where("titularUid","==",titularData.uid)));
-        if(!yaVinculado.empty){
-          errEl.textContent="Este titular ya tiene un familiar vinculado";
-          errEl.style.display="block";errEl.classList.add("show");
-          btn.disabled=false;btn.textContent="Crear cuenta →";
-          await signOut(auth);return;
-        }
-        await setDoc(doc(db,"usuarios",cred.user.uid),{
-          uid:cred.user.uid,email,nombre,plan:"familiar",
-          esFamiliar:true,titularUid:titularData.uid,
-          banned:false,createdAt:serverTimestamp()
-        });
-        const perfilSnap=await getDocs(query(collection(db,"perfiles"),where("titularUid","==",titularData.uid)));
-        if(!perfilSnap.empty){
-          await updateDoc(perfilSnap.docs[0].ref,{familiarUid:cred.user.uid,familiarNombre:nombre});
-        }
-      } else {
-        const code=genCode();
-        await setDoc(doc(db,"usuarios",cred.user.uid),{
-          uid:cred.user.uid,email,nombre,plan:planSelected,
-          inviteCode:code,esFamiliar:false,banned:false,
-          status:"demo",demoStart:serverTimestamp(),
-          createdAt:serverTimestamp()
-        });
-        await addDoc(collection(db,"perfiles"),{
-          titularUid:cred.user.uid,titularNombre:nombre,
-          familiarUid:null,familiarNombre:null,
-          nombre,fechaNac:"",grupoSanguineo:"",
-          alergias:"",medicacionCronica:"",obraSocial:"",
-          createdAt:serverTimestamp()
-        });
-      }
+      await setDoc(doc(db,"usuarios",cred.user.uid),{
+        uid:cred.user.uid,email,nombre,plan:planSelected,
+        esFamiliar:false,banned:false,
+        status:"demo",demoStart:serverTimestamp(),
+        createdAt:serverTimestamp()
+      });
+      await addDoc(collection(db,"perfiles"),{
+        titularUid:cred.user.uid,titularNombre:nombre,
+        nombre,fechaNac:"",grupoSanguineo:"",
+        alergias:"",medicacionCronica:"",obraSocial:"",
+        createdAt:serverTimestamp()
+      });
     } else {
       await signInWithEmailAndPassword(auth,email,pass);
     }
@@ -1075,17 +1061,20 @@ async function loadPerfiles(){
         rolEncontrado=(await getDoc(miembroRef)).data()?.rol||"editor";
       }
     }
-    // Si no se encontró por el vínculo viejo, buscar en el sistema nuevo de miembros (subcolección)
+    // Si no se encontró por el vínculo viejo, buscar en el sistema nuevo usando collectionGroup
+    // (mucho más eficiente que recorrer todos los perfiles uno por uno)
     if(!perfilEncontrado){
-      const perfilesSnap=await getDocs(collection(db,"perfiles"));
-      for(const pDoc of perfilesSnap.docs){
-        const miembroSnap=await getDoc(doc(db,"perfiles",pDoc.id,"miembros",me.uid));
-        if(miembroSnap.exists()){
-          perfilEncontrado={id:pDoc.id,...pDoc.data()};
-          rolEncontrado=miembroSnap.data().rol||"editor";
-          break;
+      try{
+        const miembroQuery=query(collectionGroup(db,"miembros"),where("uid","==",me.uid));
+        const miembroDocsSnap=await getDocs(miembroQuery);
+        if(!miembroDocsSnap.empty){
+          const miembroDoc=miembroDocsSnap.docs[0];
+          rolEncontrado=miembroDoc.data().rol||"editor";
+          const perfilIdEncontrado=miembroDoc.ref.parent.parent.id;
+          const perfSnap=await getDoc(doc(db,"perfiles",perfilIdEncontrado));
+          if(perfSnap.exists())perfilEncontrado={id:perfSnap.id,...perfSnap.data()};
         }
-      }
+      }catch(e){console.error("Error buscando perfil como miembro:",e);}
     }
     perfiles=perfilEncontrado?[perfilEncontrado]:[];
     myRolEnPerfil=rolEncontrado;
@@ -1198,6 +1187,7 @@ function renderPage(page){
   else if(page==="estudios")renderEstudios();
   else if(page==="turnos")renderTurnos();
   else if(page==="directorio")renderDirectorio();
+  else if(page==="historial")renderHistorial();
   else if(page==="perfil")renderPerfil();
 }
 document.querySelectorAll(".nav-item[data-page]").forEach(n=>n.addEventListener("click",()=>renderPage(n.dataset.page)));
@@ -1392,9 +1382,9 @@ function renderHistorial(){
   el.innerHTML=`<div class="sec-header"><span class="sec-title" style="font-size:17px">Historial médico</span><button class="btn-sm gold" id="btn-add-hist">＋ Agregar</button></div>
   ${historial.length===0?emptyHTML("📋","Sin registros","Cargá consultas, internaciones y cirugías"):
   historial.map(h=>`<div class="historial-item">
-    <div class="historial-header"><div class="historial-tipo">${icons[h.tipo]||"📋"} ${h.tipo}</div><div class="historial-fecha">${fmtFecha(h.fecha)}</div></div>
-    <div class="historial-detail">${h.descripcion||"—"}</div>
-    ${h.medico?`<div class="historial-medico">👨‍⚕️ ${h.medico}${h.lugar?" · "+h.lugar:""}</div>`:""}
+    <div class="historial-header"><div class="historial-tipo">${icons[h.tipo]||"📋"} ${sanitizeHTML(h.tipo)}</div><div class="historial-fecha">${fmtFecha(h.fecha)}</div></div>
+    <div class="historial-detail">${sanitizeHTML(h.descripcion||"—")}</div>
+    ${h.medico?`<div class="historial-medico">👨‍⚕️ ${sanitizeHTML(h.medico)}${h.lugar?" · "+sanitizeHTML(h.lugar):""}</div>`:""}
   </div>`).join("")}`;
   el.querySelector("#btn-add-hist")?.addEventListener("click",()=>openModal("modal-historial"));
 }
@@ -1411,10 +1401,11 @@ function renderPerfil(){
         <div><div class="perfil-nombre">${p.nombre}</div><div class="perfil-plan">Plan ${esFamiliarPlan?"Familiar 👨‍👩‍👧":"Individual 👤"} · ${esFamiliar?"Familiar vinculado":"Titular"}</div></div>
       </div>
       <div class="perfil-dato-row"><span class="perfil-dato-label">Fecha de nacimiento</span><span class="perfil-dato-val">${fmtFecha(p.fechaNac)||"—"}</span></div>
-      <div class="perfil-dato-row"><span class="perfil-dato-label">Grupo sanguíneo</span><span class="perfil-dato-val">${p.grupoSanguineo||"—"}</span></div>
-      <div class="perfil-dato-row"><span class="perfil-dato-label">Alergias</span><span class="perfil-dato-val">${p.alergias||"Ninguna"}</span></div>
-      <div class="perfil-dato-row"><span class="perfil-dato-label">Medicación crónica</span><span class="perfil-dato-val">${p.medicacionCronica||"Ninguna"}</span></div>
-      <div class="perfil-dato-row"><span class="perfil-dato-label">Obra social / Prepaga</span><span class="perfil-dato-val">${p.obraSocial||"—"}</span></div>
+      <div class="perfil-dato-row"><span class="perfil-dato-label">Grupo sanguíneo</span><span class="perfil-dato-val">${sanitizeHTML(p.grupoSanguineo||"—")}</span></div>
+      <div class="perfil-dato-row"><span class="perfil-dato-label">Alergias</span><span class="perfil-dato-val">${sanitizeHTML(p.alergias||"Ninguna")}</span></div>
+      <div class="perfil-dato-row"><span class="perfil-dato-label">Medicación crónica</span><span class="perfil-dato-val">${sanitizeHTML(p.medicacionCronica||"Ninguna")}</span></div>
+      <div class="perfil-dato-row"><span class="perfil-dato-label">Obra social / Prepaga</span><span class="perfil-dato-val">${sanitizeHTML(p.obraSocial||"—")}</span></div>
+      ${puedoEditarPerfil()?`<button class="btn-sm" id="btn-editar-perfil-datos" style="width:100%;justify-content:center;margin-top:12px">✏️ Editar datos</button>`:""}
     </div>
     ${!esFamiliar?`
     <div class="familiar-banner">
@@ -1441,6 +1432,7 @@ function renderPerfil(){
     </div>
     <button class="btn-sm danger" id="btn-logout-app" style="width:100%;justify-content:center;padding:13px;margin-top:8px">⏻ Cerrar sesión</button>`;
   el.querySelector("#btn-logout-app")?.addEventListener("click",()=>signOut(auth));
+  el.querySelector("#btn-editar-perfil-datos")?.addEventListener("click",abrirModalPerfilDatos);
   if(!esFamiliar){renderMiembros();bindInviteListeners();}
 }
 
@@ -1506,6 +1498,38 @@ async function quitarMiembroPerfil(miembroId){
     renderMiembros();
   }catch(e){toast("Error al quitar","err");}
 }
+
+function abrirModalPerfilDatos(){
+  const p=perfilActivo;if(!p)return;
+  document.getElementById("pd-fechaNac").value=p.fechaNac||"";
+  document.getElementById("pd-grupoSanguineo").value=p.grupoSanguineo||"";
+  document.getElementById("pd-alergias").value=p.alergias||"";
+  document.getElementById("pd-medicacionCronica").value=p.medicacionCronica||"";
+  document.getElementById("pd-obraSocial").value=p.obraSocial||"";
+  openModal("modal-perfil-datos");
+}
+document.getElementById("close-perfil-datos").addEventListener("click",()=>closeModal("modal-perfil-datos"));
+document.getElementById("cancel-perfil-datos").addEventListener("click",()=>closeModal("modal-perfil-datos"));
+document.getElementById("modal-perfil-datos").addEventListener("click",e=>{if(e.target.id==="modal-perfil-datos")closeModal("modal-perfil-datos");});
+document.getElementById("save-perfil-datos").addEventListener("click",async()=>{
+  if(!perfilActivo){toast("Sin perfil activo","err");return;}
+  const data={
+    fechaNac:document.getElementById("pd-fechaNac").value,
+    grupoSanguineo:document.getElementById("pd-grupoSanguineo").value,
+    alergias:document.getElementById("pd-alergias").value.trim(),
+    medicacionCronica:document.getElementById("pd-medicacionCronica").value.trim(),
+    obraSocial:document.getElementById("pd-obraSocial").value.trim()
+  };
+  const btn=document.getElementById("save-perfil-datos");btn.disabled=true;btn.textContent="Guardando...";
+  try{
+    await updateDoc(doc(db,"perfiles",perfilActivo.id),data);
+    Object.assign(perfilActivo,data);
+    closeModal("modal-perfil-datos");
+    toast("Datos guardados","ok");
+    renderPerfil();
+  }catch(e){toast("Error al guardar","err");}
+  btn.disabled=false;btn.textContent="Guardar";
+});
 
 function bindModal(modalId,closeId,cancelId,saveId,campos,coleccion,onSave,getExtraData){
   document.getElementById(closeId).addEventListener("click",()=>closeModal(modalId));
@@ -1680,20 +1704,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function soyMiembro(perfilId) {
+    function soyMiembroEditor(perfilId) {
+      return exists(/databases/$(database)/documents/perfiles/$(perfilId)/miembros/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/perfiles/$(perfilId)/miembros/$(request.auth.uid)).data.rol == 'editor';
+    }
+    function soyMiembroCualquiera(perfilId) {
       return exists(/databases/$(database)/documents/perfiles/$(perfilId)/miembros/$(request.auth.uid));
-    }
-    function miRolEnPerfil(perfilId) {
-      return get(/databases/$(database)/documents/perfiles/$(perfilId)/miembros/$(request.auth.uid)).data.rol;
-    }
-    function soyTitular(perfilData) {
-      return perfilData.titularUid == request.auth.uid;
-    }
-    function puedoEditar(perfilId,perfilData) {
-      return soyTitular(perfilData) || (soyMiembro(perfilId) && miRolEnPerfil(perfilId) == 'editor');
-    }
-    function puedoLeer(perfilId,perfilData) {
-      return soyTitular(perfilData) || soyMiembro(perfilId);
     }
 
     match /usuarios/{userId} {
@@ -1709,23 +1725,54 @@ service cloud.firestore {
     }
 
     match /perfiles/{perfilId} {
-      allow read: if request.auth != null && puedoLeer(perfilId,resource.data);
+      allow read: if request.auth != null && (resource.data.titularUid==request.auth.uid || soyMiembroCualquiera(perfilId));
       allow create: if request.auth != null;
-      allow update: if request.auth != null && puedoEditar(perfilId,resource.data);
-      allow delete: if request.auth != null && soyTitular(resource.data);
+      allow update: if request.auth != null && (resource.data.titularUid==request.auth.uid || soyMiembroEditor(perfilId));
+      allow delete: if request.auth != null && resource.data.titularUid==request.auth.uid;
 
       match /miembros/{miembroId} {
-        allow read: if request.auth != null && puedoLeer(perfilId,get(/databases/$(database)/documents/perfiles/$(perfilId)).data);
+        allow read: if request.auth != null;
         allow create: if request.auth != null; // se crea durante el join desde la invitación, o por migración automática
         allow delete: if request.auth != null && (
           request.auth.uid == miembroId ||
-          soyTitular(get(/databases/$(database)/documents/perfiles/$(perfilId)).data)
+          get(/databases/$(database)/documents/perfiles/$(perfilId)).data.titularUid==request.auth.uid
         );
       }
 
-      match /{subColeccion}/{docId} {
-        allow read: if request.auth != null && puedoLeer(perfilId,get(/databases/$(database)/documents/perfiles/$(perfilId)).data);
-        allow create, update, delete: if request.auth != null && puedoEditar(perfilId,get(/databases/$(database)/documents/perfiles/$(perfilId)).data);
+      match /estudios/{docId} {
+        allow read: if request.auth != null;
+        allow create, update, delete: if request.auth != null && (
+          get(/databases/$(database)/documents/perfiles/$(perfilId)).data.titularUid==request.auth.uid ||
+          soyMiembroEditor(perfilId)
+        );
+      }
+      match /turnos/{docId} {
+        allow read: if request.auth != null;
+        allow create, update, delete: if request.auth != null && (
+          get(/databases/$(database)/documents/perfiles/$(perfilId)).data.titularUid==request.auth.uid ||
+          soyMiembroEditor(perfilId)
+        );
+      }
+      match /medicos/{docId} {
+        allow read: if request.auth != null;
+        allow create, update, delete: if request.auth != null && (
+          get(/databases/$(database)/documents/perfiles/$(perfilId)).data.titularUid==request.auth.uid ||
+          soyMiembroEditor(perfilId)
+        );
+      }
+      match /historial/{docId} {
+        allow read: if request.auth != null;
+        allow create, update, delete: if request.auth != null && (
+          get(/databases/$(database)/documents/perfiles/$(perfilId)).data.titularUid==request.auth.uid ||
+          soyMiembroEditor(perfilId)
+        );
+      }
+      match /medicamentos/{docId} {
+        allow read: if request.auth != null;
+        allow create, update, delete: if request.auth != null && (
+          get(/databases/$(database)/documents/perfiles/$(perfilId)).data.titularUid==request.auth.uid ||
+          soyMiembroEditor(perfilId)
+        );
       }
     }
   }
