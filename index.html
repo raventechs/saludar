@@ -38,6 +38,9 @@ input,select,button,textarea{font-family:var(--font)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes heartbeat{0%,100%{transform:scale(1)}15%{transform:scale(1.25)}30%{transform:scale(1)}45%{transform:scale(1.15)}60%{transform:scale(1)}}
+@keyframes pillDrop{0%{transform:translateY(-26px) rotate(0deg);opacity:0}15%{opacity:1}70%{transform:translateY(0) rotate(15deg);opacity:1}85%{opacity:1}100%{transform:translateY(0) rotate(15deg);opacity:0}}
+.pill-drop{animation:pillDrop 1.8s ease-in-out infinite}
+.pillbox-wrap{width:88px;height:88px}
 
 .screen{display:none;min-height:100vh;flex-direction:column}
 .screen.active{display:flex}
@@ -321,6 +324,13 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
 .med-card-sub{font-size:12px;color:var(--muted)}
 .med-card-horarios{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .med-h-chip{background:var(--surface2);border:1px solid var(--border);font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;color:var(--text)}
+.med-h-chip.vencido{background:var(--red-bg);border-color:#fca5a5;color:var(--red)}
+.horario-row{display:flex;align-items:center;gap:8px}
+.horario-row input[type="time"]{flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;color:var(--text);font-size:17px;outline:none}
+.horario-row input[type="time"]:focus{border-color:var(--blue)}
+.btn-del-horario{width:38px;height:38px;flex-shrink:0;background:var(--red-bg);border:1.5px solid #fecaca;border-radius:var(--radius-sm);color:var(--red);font-size:16px;cursor:pointer}
+.med-item.vencido{border-color:#fca5a5;background:var(--red-bg)}
+.med-item.vencido .med-horario-chip{background:var(--red);color:#fff}
 </style>
 </head>
 <body>
@@ -329,7 +339,17 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
 <!-- LOADING -->
 <div id="screen-loading" class="screen active" style="align-items:center;justify-content:center;background:linear-gradient(145deg,var(--navy),#1a3060)">
   <div style="text-align:center">
-    <div style="font-size:48px;margin-bottom:14px;animation:heartbeat 1.1s ease-in-out infinite">❤️</div>
+    <div class="pillbox-wrap" style="margin:0 auto 14px;position:relative;height:60px">
+      <svg viewBox="0 0 100 70" width="88" height="62">
+        <path d="M30 32 L36 64 Q37 66 39 66 L61 66 Q63 66 64 64 L70 32 Z" fill="#dbeafe" fill-opacity="0.35" stroke="var(--gold)" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M33 50 L37 64 Q38 66 39 66 L61 66 Q62 66 63 64 L67 50 Z" fill="#7dd3fc" fill-opacity="0.55"/>
+        <g class="pill-drop" style="transform-origin:50px 38px">
+          <rect x="44" y="38" width="12" height="22" rx="6" fill="#f0b84a"/>
+          <rect x="44" y="38" width="12" height="11" rx="6" fill="#fff"/>
+        </g>
+      </svg>
+    </div>
+
     <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:4px">Salud<span style="color:var(--gold)">AR</span></div>
     <div style="font-size:13px;color:rgba(255,255,255,.6)">Cargando tu información...</div>
   </div>
@@ -536,7 +556,11 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
     <div class="modal-header"><span class="modal-title">💊 Agregar medicamento</span><button class="modal-close" id="close-med">✕</button></div>
     <div class="field"><label>Nombre del medicamento *</label><input id="med-nombre" placeholder="Ej: Enalapril 10mg"/></div>
     <div class="field"><label>Dosis</label><input id="med-dosis" placeholder="Ej: 1 comprimido"/></div>
-    <div class="field"><label>Horarios (separados por coma) *</label><input id="med-horarios" placeholder="Ej: 08:00, 20:00"/></div>
+    <div class="field"><label>Horarios *</label>
+      <div id="med-horarios-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+      <input type="hidden" id="med-horarios"/>
+      <button type="button" class="btn-sm" id="btn-add-horario" style="margin-top:8px;width:100%;justify-content:center">＋ Agregar horario</button>
+    </div>
     <div class="field"><label>Indicaciones</label><input id="med-indicaciones" placeholder="Ej: Con el desayuno"/></div>
     <div class="field"><label>Días de la semana</label><select id="med-frecuencia"><option value="todos">Todos los días</option><option value="laboral">Días hábiles (Lun-Vie)</option><option value="semana">Lunes, Miércoles y Viernes</option><option value="finde">Fines de semana</option></select></div>
     <div class="modal-footer"><button class="btn-cancel" id="cancel-med">Cancelar</button><button class="btn-save" id="save-med">Guardar</button></div>
@@ -576,7 +600,8 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut,GoogleAuthProvider,signInWithPopup}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import{getFirestore,collection,collectionGroup,doc,setDoc,addDoc,getDocs,getDoc,updateDoc,deleteDoc,query,where,orderBy,serverTimestamp,Timestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getFirestore,collection,collectionGroup,doc,setDoc,addDoc,getDocs,getDoc,updateDoc,deleteDoc,query,where,orderBy,serverTimestamp,Timestamp,arrayUnion}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getMessaging,getToken,isSupported}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
 const FB={
   apiKey:"AIzaSyAl_gMgQoZa6F-tInkoc61AA8ggzMhlRPY",
@@ -776,6 +801,25 @@ function fmtFecha(str){if(!str)return"—";const[y,m,d]=str.split("-");return`${
 function diasRestantes(str){if(!str)return null;return Math.ceil((new Date(str+"T00:00:00")-new Date())/86400000);}
 function openModal(id){document.getElementById(id).classList.add("open");}
 function closeModal(id){document.getElementById(id).classList.remove("open");}
+
+// ── NOTIFICACIONES PUSH ────────────────────────────────────
+const VAPID_KEY="BKnuPSxP4r3-lWyIvSKchVhEwH2cckvvCWJ2SL91D5JdbBsOv5xwsWzKoOki_vv1fJJQlpn9ecZQnZ22vA7Zz88";
+async function activarNotificaciones(){
+  if(!perfilActivo){toast("Elegí un perfil primero","err");return;}
+  try{
+    if(!("Notification" in window)||!(await isSupported())){toast("Este navegador no soporta notificaciones","err");return;}
+    const permiso=await Notification.requestPermission();
+    if(permiso!=="granted"){toast("Necesitamos tu permiso para avisarte","err");return;}
+    const reg=await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+    const messaging=getMessaging();
+    const token=await getToken(messaging,{vapidKey:VAPID_KEY,serviceWorkerRegistration:reg});
+    if(!token){toast("No se pudo activar — intentá de nuevo","err");return;}
+    await updateDoc(doc(db,"perfiles",perfilActivo.id),{fcmTokens:arrayUnion(token)});
+    perfilActivo.fcmTokens=[...(perfilActivo.fcmTokens||[]),token];
+    toast("Notificaciones activadas ✅","ok");
+    if(currentPage==="perfil")renderPerfil();
+  }catch(e){console.error(e);toast("Error al activar notificaciones","err");}
+}
 
 ["login-logo","app-logo"].forEach(id=>{
   document.getElementById(id)?.addEventListener("click",()=>{
@@ -1212,7 +1256,13 @@ function renderInicio(){
       hs.forEach((h,i)=>medsExpandidos.push({...m,horario:h,key:m.id+"_"+i}));
     }
   });
-  medsExpandidos.sort((a,b)=>a.horario.localeCompare(b.horario));
+  function minutosDeHorario(h){
+    const m=(h||"").match(/(\d{1,2})[:.,hH](\d{1,2})/);
+    if(!m)return 9999;
+    return parseInt(m[1])*60+parseInt(m[2]);
+  }
+  medsExpandidos.sort((a,b)=>minutosDeHorario(a.horario)-minutosDeHorario(b.horario));
+  const ahoraMin=new Date().getHours()*60+new Date().getMinutes();
 
   el.innerHTML=`
     <div style="padding:4px 0 2px;font-size:13px;font-weight:700;color:var(--text)">
@@ -1230,7 +1280,8 @@ function renderInicio(){
       <div id="med-checklist">
         ${medsExpandidos.map(m=>{
           const tomado=!!tomasHoy[m.key];
-          return`<div class="med-item${tomado?" tomado":""}" data-mkey="${m.key}">
+          const vencido=!tomado&&minutosDeHorario(m.horario)<ahoraMin;
+          return`<div class="med-item${tomado?" tomado":vencido?" vencido":""}" data-mkey="${m.key}">
             <div class="med-check">${tomado?"✓":""}</div>
             <div class="med-info">
               <div class="med-nombre">${m.nombre}</div>
@@ -1281,8 +1332,8 @@ function renderInicio(){
       renderInicio();
     });
   });
-  el.querySelector("#btn-agregar-med-home")?.addEventListener("click",()=>openModal("modal-medicacion"));
-  el.querySelector("#btn-agregar-med-home-empty")?.addEventListener("click",()=>openModal("modal-medicacion"));
+  el.querySelector("#btn-agregar-med-home")?.addEventListener("click",()=>abrirModalMedNuevo());
+  el.querySelector("#btn-agregar-med-home-empty")?.addEventListener("click",()=>abrirModalMedNuevo());
   el.querySelectorAll(".check-item[data-wid]").forEach(item=>{
     item.addEventListener("click",()=>{wellnessCheck[item.dataset.wid]=!wellnessCheck[item.dataset.wid];renderInicio();});
   });
@@ -1299,23 +1350,14 @@ function renderMedicacion(){
     return`<div class="med-card-list">
       <div class="med-card-header">
         <div class="med-card-nombre">💊 ${m.nombre}</div>
-        <button class="btn-sm danger" style="padding:4px 10px;font-size:11px" data-del-med="${m.id}">Eliminar</button>
+        <div style="display:flex;gap:6px">${btnAcciones("medicamentos",m.id)}</div>
       </div>
       <div class="med-card-sub">${m.dosis||""}${m.indicaciones?" · "+m.indicaciones:""}</div>
       <div class="med-card-sub" style="margin-top:2px">📅 ${m.frecuencia==="todos"||!m.frecuencia?"Todos los días":m.frecuencia==="laboral"?"Días hábiles":m.frecuencia==="semana"?"Lun / Mié / Vie":"Fines de semana"}</div>
       <div class="med-card-horarios">${hs.length>0?hs.map(h=>`<span class="med-h-chip">🕐 ${h}</span>`).join(""):"<span class='med-h-chip'>Sin horario</span>"}</div>
     </div>`;
   }).join("")}`;
-  el.querySelector("#btn-add-med")?.addEventListener("click",()=>openModal("modal-medicacion"));
-  el.querySelectorAll("[data-del-med]").forEach(btn=>{
-    btn.addEventListener("click",async()=>{
-      if(!confirm("¿Eliminar este medicamento?"))return;
-      await deleteDoc(doc(db,"perfiles",perfilActivo.id,"medicamentos",btn.dataset.delMed));
-      medicamentos=medicamentos.filter(m=>m.id!==btn.dataset.delMed);
-      toast("Medicamento eliminado","ok");
-      renderMedicacion();
-    });
-  });
+  el.querySelector("#btn-add-med")?.addEventListener("click",()=>abrirModalMedNuevo());
 }
 
 function renderEstudios(){
@@ -1329,6 +1371,7 @@ function renderEstudios(){
       <div class="list-item-sub">${e.laboratorio||"—"}${e.medico?" · "+e.medico:""}</div>
       ${e.observaciones?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${sanitizeHTML(e.observaciones)}</div>`:""}
       ${e.foto?`<div style="margin-top:8px"><img src="${e.foto}" style="max-width:100%;max-height:180px;border-radius:8px;object-fit:contain;cursor:pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'180px':'none'" title="Tocá para ampliar"/></div>`:""}
+      <div style="display:flex;gap:6px;margin-top:8px">${btnAcciones("estudios",e.id)}</div>
     </div>
     <div style="font-size:12px;color:var(--muted);text-align:right;flex-shrink:0">${fmtFecha(e.fecha)}</div>
   </div>`).join("")}`;
@@ -1348,6 +1391,7 @@ function renderTurnos(){
         <div class="turno-medico">${t.medico||"—"}</div>
         <div class="turno-hora">🕐 ${t.hora||"—"}${t.lugar?" · "+t.lugar:""}</div>
         ${t.notas?`<div style="font-size:11px;color:var(--muted);margin-top:4px">📝 ${t.notas}</div>`:""}
+        <div style="display:flex;gap:6px;margin-top:8px">${btnAcciones("turnos",t.id)}</div>
       </div>
       <span class="badge ${dr===0?"badge-warn":futuro?"badge-blue":"badge-green"}">${dr===0?"Hoy":futuro?"En "+dr+"d":"Realizado"}</span>
     </div>`;
@@ -1372,6 +1416,7 @@ function renderDirectorio(){
       ${m.direccion?`<div class="medico-dato">📍 ${m.direccion}</div>`:""}
       ${m.notas?`<div class="medico-dato">📝 ${m.notas}</div>`:""}
     </div>
+    <div style="display:flex;gap:6px;margin-top:10px">${btnAcciones("medicos",m.id)}</div>
   </div>`).join("")}`;
   el.querySelector("#btn-add-medico")?.addEventListener("click",()=>openModal("modal-medico"));
 }
@@ -1385,6 +1430,7 @@ function renderHistorial(){
     <div class="historial-header"><div class="historial-tipo">${icons[h.tipo]||"📋"} ${sanitizeHTML(h.tipo)}</div><div class="historial-fecha">${fmtFecha(h.fecha)}</div></div>
     <div class="historial-detail">${sanitizeHTML(h.descripcion||"—")}</div>
     ${h.medico?`<div class="historial-medico">👨‍⚕️ ${sanitizeHTML(h.medico)}${h.lugar?" · "+sanitizeHTML(h.lugar):""}</div>`:""}
+    <div style="display:flex;gap:6px;margin-top:8px">${btnAcciones("historial",h.id)}</div>
   </div>`).join("")}`;
   el.querySelector("#btn-add-hist")?.addEventListener("click",()=>openModal("modal-historial"));
 }
@@ -1394,7 +1440,12 @@ function renderPerfil(){
   const p=perfilActivo;if(!p){el.innerHTML=emptyHTML("👤","Sin perfil");return;}
   const esFamiliar=myDoc?.esFamiliar;
   const esFamiliarPlan=myDoc?.plan==="familiar";
+  const notifActivas=(p.fcmTokens||[]).length>0;
   el.innerHTML=`
+    <div class="card" style="display:flex;align-items:center;gap:14px;justify-content:space-between">
+      <div><div style="font-weight:700;font-size:14px;color:var(--text)">🔔 Notificaciones</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${notifActivas?"Activadas en este dispositivo o en alguno vinculado":"Recordatorios de medicación y turnos en el celular"}</div></div>
+      <button class="btn-sm ${notifActivas?"":"gold"}" id="btn-activar-notif">${notifActivas?"Reactivar":"Activar"}</button>
+    </div>
     <div class="card">
       <div class="perfil-header">
         <div class="perfil-avatar">${(p.nombre||"?").substring(0,2).toUpperCase()}</div>
@@ -1433,6 +1484,7 @@ function renderPerfil(){
     <button class="btn-sm danger" id="btn-logout-app" style="width:100%;justify-content:center;padding:13px;margin-top:8px">⏻ Cerrar sesión</button>`;
   el.querySelector("#btn-logout-app")?.addEventListener("click",()=>signOut(auth));
   el.querySelector("#btn-editar-perfil-datos")?.addEventListener("click",abrirModalPerfilDatos);
+  el.querySelector("#btn-activar-notif")?.addEventListener("click",activarNotificaciones);
   if(!esFamiliar){renderMiembros();bindInviteListeners();}
 }
 
@@ -1531,10 +1583,23 @@ document.getElementById("save-perfil-datos").addEventListener("click",async()=>{
   btn.disabled=false;btn.textContent="Guardar";
 });
 
-function bindModal(modalId,closeId,cancelId,saveId,campos,coleccion,onSave,getExtraData){
-  document.getElementById(closeId).addEventListener("click",()=>closeModal(modalId));
-  document.getElementById(cancelId).addEventListener("click",()=>closeModal(modalId));
-  document.getElementById(modalId).addEventListener("click",e=>{if(e.target.id===modalId)closeModal(modalId);});
+const modalEditors={};
+function bindModal(modalId,closeId,cancelId,saveId,campos,coleccion,getArr,renderFn,getExtraData,opts){
+  let editId=null;
+  const modalTitleEl=()=>document.querySelector(`#${modalId} .modal-title`);
+  const tituloBase=modalTitleEl()?modalTitleEl().textContent:"";
+  function limpiarCampos(){campos.forEach(c=>{const el=document.getElementById(c.id);if(el)el.value=c.default??"";});}
+  function abrirParaEditar(item){
+    editId=item.id;
+    campos.forEach(c=>{const el=document.getElementById(c.id);if(el)el.value=item[c.key]??"";});
+    if(opts&&opts.onEditFill)opts.onEditFill(item);
+    const t=modalTitleEl();if(t)t.textContent=tituloBase.replace("Agregar","Editar").replace("Nuevo","Editar").replace("Agendar","Editar");
+    openModal(modalId);
+  }
+  modalEditors[coleccion]=abrirParaEditar;
+  document.getElementById(closeId).addEventListener("click",()=>{editId=null;closeModal(modalId);});
+  document.getElementById(cancelId).addEventListener("click",()=>{editId=null;closeModal(modalId);});
+  document.getElementById(modalId).addEventListener("click",e=>{if(e.target.id===modalId){editId=null;closeModal(modalId);}});
   document.getElementById(saveId).addEventListener("click",async()=>{
     if(!perfilActivo){toast("Sin perfil activo","err");return;}
     const data={};let valid=true;
@@ -1543,46 +1608,110 @@ function bindModal(modalId,closeId,cancelId,saveId,campos,coleccion,onSave,getEx
     if(getExtraData)Object.assign(data,getExtraData());
     const btn=document.getElementById(saveId);btn.disabled=true;btn.textContent="Guardando...";
     try{
-      data.createdAt=serverTimestamp();
-      const ref=await addDoc(collection(db,"perfiles",perfilActivo.id,coleccion),data);
-      onSave({id:ref.id,...data});
-      closeModal(modalId);toast("Guardado correctamente","ok");
-      campos.forEach(c=>document.getElementById(c.id)&&(document.getElementById(c.id).value=""));
+      if(editId){
+        await updateDoc(doc(db,"perfiles",perfilActivo.id,coleccion,editId),data);
+        const arr=getArr();
+        const idx=arr.findIndex(x=>x.id===editId);
+        if(idx>-1)arr[idx]={...arr[idx],...data};
+        toast("Actualizado correctamente","ok");
+      } else {
+        data.createdAt=serverTimestamp();
+        const ref=await addDoc(collection(db,"perfiles",perfilActivo.id,coleccion),data);
+        const arr=getArr();
+        if(opts&&opts.prepend)arr.unshift({id:ref.id,...data});else arr.push({id:ref.id,...data});
+        toast("Guardado correctamente","ok");
+      }
+      closeModal(modalId);
+      const t=modalTitleEl();if(t)t.textContent=tituloBase;
+      editId=null;
+      limpiarCampos();
+      renderFn();
     }catch(e){toast("Error al guardar","err");}
     btn.disabled=false;btn.textContent="Guardar";
   });
 }
-
-// ── MODAL MEDICACION ──────────────────────────────────────
-document.getElementById("close-med").addEventListener("click",()=>closeModal("modal-medicacion"));
-document.getElementById("cancel-med").addEventListener("click",()=>closeModal("modal-medicacion"));
-document.getElementById("modal-medicacion").addEventListener("click",e=>{if(e.target.id==="modal-medicacion")closeModal("modal-medicacion");});
-document.getElementById("save-med").addEventListener("click",async()=>{
-  if(!perfilActivo){toast("Sin perfil activo","err");return;}
-  const nombre=document.getElementById("med-nombre").value.trim();
-  const horarios=document.getElementById("med-horarios").value.trim();
-  if(!nombre||!horarios){toast("Nombre y horarios son obligatorios","err");return;}
-  const data={
-    nombre,
-    dosis:document.getElementById("med-dosis").value.trim(),
-    horarios,
-    indicaciones:document.getElementById("med-indicaciones").value.trim(),
-    frecuencia:document.getElementById("med-frecuencia").value,
-    createdAt:serverTimestamp()
-  };
-  const btn=document.getElementById("save-med");btn.disabled=true;btn.textContent="Guardando...";
-  try{
-    const ref=await addDoc(collection(db,"perfiles",perfilActivo.id,"medicamentos"),data);
-    medicamentos.push({id:ref.id,...data});
-    closeModal("modal-medicacion");
-    toast("Medicamento guardado","ok");
-    ["med-nombre","med-dosis","med-horarios","med-indicaciones"].forEach(id=>document.getElementById(id).value="");
-    document.getElementById("med-frecuencia").value="todos";
-    if(currentPage==="medicacion")renderMedicacion();
-    else renderInicio();
-  }catch(e){toast("Error al guardar","err");}
-  btn.disabled=false;btn.textContent="Guardar";
+function btnAcciones(coleccion,id,onDelete){
+  return`<button class="btn-sm" data-edit-item="${coleccion}:${id}" style="padding:4px 10px;font-size:11px">✏️ Editar</button><button class="btn-sm danger" style="padding:4px 10px;font-size:11px" data-del-item="${coleccion}:${id}">🗑️ Eliminar</button>`;
+}
+document.addEventListener("click",async e=>{
+  const editBtn=e.target.closest("[data-edit-item]");
+  if(editBtn){
+    const[coleccion,id]=editBtn.dataset.editItem.split(":");
+    const arrMap={medicamentos,estudios,turnos,medicos,historial};
+    const item=(arrMap[coleccion]||[]).find(x=>x.id===id);
+    if(item&&modalEditors[coleccion])modalEditors[coleccion](item);
+    return;
+  }
+  const delBtn=e.target.closest("[data-del-item]");
+  if(delBtn){
+    const[coleccion,id]=delBtn.dataset.delItem.split(":");
+    if(!confirm("¿Eliminar este registro?"))return;
+    try{
+      await deleteDoc(doc(db,"perfiles",perfilActivo.id,coleccion,id));
+      const arrMap2={medicamentos,estudios,turnos,medicos,historial};
+      const arr=arrMap2[coleccion];
+      const idx=arr?arr.findIndex(x=>x.id===id):-1;
+      if(idx>-1)arr.splice(idx,1);
+      if(coleccion==="medicamentos"){renderMedicacion();renderInicio();}
+      else if(coleccion==="estudios")renderEstudios();
+      else if(coleccion==="turnos")renderTurnos();
+      else if(coleccion==="medicos")renderDirectorio();
+      else if(coleccion==="historial")renderHistorial();
+      toast("Eliminado correctamente","ok");
+    }catch(err){toast("Error al eliminar","err");}
+  }
 });
+
+// ── HORARIOS DE MEDICACIÓN — filas con selector de hora táctil ──
+function syncHorariosHidden(){
+  const valores=[...document.querySelectorAll("#med-horarios-rows input[type=time]")].map(i=>i.value).filter(Boolean);
+  document.getElementById("med-horarios").value=valores.join(",");
+}
+function agregarFilaHorario(valor=""){
+  const row=document.createElement("div");
+  row.className="horario-row";
+  row.innerHTML=`<input type="time" value="${valor}"/><button type="button" class="btn-del-horario">✕</button>`;
+  row.querySelector("input").addEventListener("change",syncHorariosHidden);
+  row.querySelector(".btn-del-horario").addEventListener("click",()=>{
+    const rows=document.getElementById("med-horarios-rows");
+    if(rows.children.length>1)row.remove();
+    else row.querySelector("input").value="";
+    syncHorariosHidden();
+  });
+  document.getElementById("med-horarios-rows").appendChild(row);
+}
+function setFilasHorario(horariosCSV){
+  document.getElementById("med-horarios-rows").innerHTML="";
+  const lista=(horariosCSV||"").split(",").map(h=>h.trim()).filter(Boolean);
+  if(lista.length===0)agregarFilaHorario();
+  else lista.forEach(h=>agregarFilaHorario(h));
+  syncHorariosHidden();
+}
+document.getElementById("btn-add-horario").addEventListener("click",()=>{agregarFilaHorario();syncHorariosHidden();});
+function abrirModalMedNuevo(){
+  setFilasHorario("");
+  const t=document.querySelector("#modal-medicacion .modal-title");if(t)t.textContent="💊 Agregar medicamento";
+  document.getElementById("med-nombre").value="";
+  document.getElementById("med-dosis").value="";
+  document.getElementById("med-indicaciones").value="";
+  document.getElementById("med-frecuencia").value="todos";
+  openModal("modal-medicacion");
+}
+
+
+bindModal("modal-medicacion","close-med","cancel-med","save-med",[
+  {id:"med-nombre",key:"nombre",label:"El nombre",required:true},
+  {id:"med-dosis",key:"dosis"},
+  {id:"med-horarios",key:"horarios",label:"Los horarios",required:true},
+  {id:"med-indicaciones",key:"indicaciones"},
+  {id:"med-frecuencia",key:"frecuencia",default:"todos"},
+],"medicamentos",()=>medicamentos,()=>{
+  document.getElementById("med-frecuencia").value=document.getElementById("med-frecuencia").value||"todos";
+  if(currentPage==="medicacion")renderMedicacion();
+  renderInicio();
+},null,{onEditFill:item=>{
+  setFilasHorario(item.horarios);
+}});
 
 // ── FOTO DE ESTUDIO — CÁMARA Y COMPRESIÓN ─────────────────
 let fotoEstudioBase64=null;
@@ -1638,15 +1767,7 @@ document.getElementById("e-foto-quitar").addEventListener("click",e=>{
   document.getElementById("e-foto-wrap").style.borderColor="";
 });
 
-bindModal("modal-estudio","close-estudio","cancel-estudio","save-estudio",[
-  {id:"e-fecha",key:"fecha",label:"La fecha",required:true},
-  {id:"e-tipo",key:"tipo",label:"El tipo"},
-  {id:"e-lab",key:"laboratorio"},
-  {id:"e-medico",key:"medico"},
-  {id:"e-obs",key:"observaciones"},
-],"estudios",item=>{
-  estudios.unshift(item);
-  renderEstudios();
+function resetFotoEstudioUI(){
   fotoEstudioBase64=null;
   document.getElementById("e-foto-input").value="";
   document.getElementById("e-foto-img").src="";
@@ -1654,7 +1775,24 @@ bindModal("modal-estudio","close-estudio","cancel-estudio","save-estudio",[
   document.getElementById("e-foto-placeholder").style.display="block";
   document.getElementById("e-foto-quitar").style.display="none";
   document.getElementById("e-foto-wrap").style.borderColor="";
-},()=>fotoEstudioBase64?{foto:fotoEstudioBase64}:{});
+}
+bindModal("modal-estudio","close-estudio","cancel-estudio","save-estudio",[
+  {id:"e-fecha",key:"fecha",label:"La fecha",required:true},
+  {id:"e-tipo",key:"tipo",label:"El tipo"},
+  {id:"e-lab",key:"laboratorio"},
+  {id:"e-medico",key:"medico"},
+  {id:"e-obs",key:"observaciones"},
+],"estudios",()=>estudios,()=>{renderEstudios();resetFotoEstudioUI();},()=>fotoEstudioBase64?{foto:fotoEstudioBase64}:{},{prepend:true,onEditFill:item=>{
+  if(item.foto){
+    fotoEstudioBase64=item.foto;
+    const kb=Math.round((item.foto.length*3)/4/1024);
+    document.getElementById("e-foto-img").src=item.foto;
+    document.getElementById("e-foto-size").textContent=`📦 ${kb} KB`;
+    document.getElementById("e-foto-preview").style.display="block";
+    document.getElementById("e-foto-placeholder").style.display="none";
+    document.getElementById("e-foto-quitar").style.display="block";
+  } else resetFotoEstudioUI();
+}});
 
 bindModal("modal-turno","close-turno","cancel-turno","save-turno",[
   {id:"t-fecha",key:"fecha",label:"La fecha",required:true},
@@ -1663,7 +1801,7 @@ bindModal("modal-turno","close-turno","cancel-turno","save-turno",[
   {id:"t-medico",key:"medico"},
   {id:"t-lugar",key:"lugar"},
   {id:"t-notas",key:"notas"},
-],"turnos",item=>{turnos.push(item);renderTurnos();});
+],"turnos",()=>turnos,renderTurnos);
 
 bindModal("modal-medico","close-medico","cancel-medico","save-medico",[
   {id:"m-nombre",key:"nombre",label:"El nombre",required:true},
@@ -1672,7 +1810,7 @@ bindModal("modal-medico","close-medico","cancel-medico","save-medico",[
   {id:"m-os",key:"obraSocial"},
   {id:"m-dir",key:"direccion"},
   {id:"m-notas",key:"notas"},
-],"medicos",item=>{medicos.push(item);renderDirectorio();});
+],"medicos",()=>medicos,renderDirectorio);
 
 bindModal("modal-historial","close-hist","cancel-hist","save-hist",[
   {id:"h-fecha",key:"fecha",label:"La fecha",required:true},
@@ -1680,7 +1818,7 @@ bindModal("modal-historial","close-hist","cancel-hist","save-hist",[
   {id:"h-tipo",key:"tipo"},
   {id:"h-medico",key:"medico"},
   {id:"h-lugar",key:"lugar"},
-],"historial",item=>{historial.unshift(item);renderHistorial();});
+],"historial",()=>historial,renderHistorial,null,{prepend:true});
 
 document.getElementById("btn-google").addEventListener("click",async()=>{
   const btn=document.getElementById("btn-google");
