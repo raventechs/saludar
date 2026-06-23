@@ -40,6 +40,8 @@ input,select,button,textarea{font-family:var(--font)}
 @keyframes heartbeat{0%,100%{transform:scale(1)}15%{transform:scale(1.25)}30%{transform:scale(1)}45%{transform:scale(1.15)}60%{transform:scale(1)}}
 @keyframes pillDrop{0%{transform:translateY(-26px) rotate(0deg);opacity:0}15%{opacity:1}70%{transform:translateY(0) rotate(15deg);opacity:1}85%{opacity:1}100%{transform:translateY(0) rotate(15deg);opacity:0}}
 .pill-drop{animation:pillDrop 1.8s ease-in-out infinite}
+@keyframes swayIcon{0%,100%{transform:rotate(-8deg) translateY(0)}50%{transform:rotate(8deg) translateY(-2px)}}
+.header-anim-icon{display:inline-block;font-size:18px;animation:swayIcon 1.6s ease-in-out infinite;transform-origin:bottom center}
 .pillbox-wrap{width:88px;height:88px}
 
 .screen{display:none;min-height:100vh;flex-direction:column}
@@ -49,7 +51,7 @@ input,select,button,textarea{font-family:var(--font)}
 
 .auth-card{background:var(--surface);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 32px 80px rgba(0,0,0,.3);animation:fadeUp .4s ease both}
 .brand-row{display:flex;align-items:center;gap:12px;margin-bottom:32px}
-.brand-icon{width:44px;height:44px;background:var(--navy);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;user-select:none;flex-shrink:0}
+.brand-icon{width:44px;height:44px;background:var(--navy);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;user-select:none;flex-shrink:0;touch-action:manipulation}
 .brand-name{font-size:22px;font-weight:800;color:var(--navy)}
 .brand-name span{color:var(--gold)}
 .auth-title{font-size:24px;font-weight:800;color:var(--navy);margin-bottom:6px}
@@ -78,7 +80,7 @@ input,select,button,textarea{font-family:var(--font)}
 
 .app-header{background:var(--navy);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;transition:background .2s}
 [data-theme="dark"] .app-header{background:#080f1e}
-.app-header-brand{font-size:20px;font-weight:800;color:#fff;cursor:pointer;user-select:none}
+.app-header-brand{font-size:20px;font-weight:800;color:#fff;cursor:pointer;user-select:none;touch-action:manipulation;display:flex;align-items:center;gap:8px}
 .app-header-brand span{color:var(--gold)}
 .app-header-right{display:flex;align-items:center;gap:8px}
 .plan-tag{font-size:11px;font-weight:700;background:rgba(255,255,255,.15);color:#fff;padding:4px 10px;border-radius:99px}
@@ -301,6 +303,9 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
 .demo-countdown.urgente{background:rgba(220,38,38,.25);color:#fca5a5}
 .btn-aext{flex:1;padding:8px;background:#dbeafe;border:1.5px solid #93c5fd;border-radius:8px;color:var(--blue);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font)}
 .btn-aact{flex:1;padding:8px;background:var(--green-bg);border:1.5px solid #86efac;border-radius:8px;color:var(--green);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font)}
+.btn-afam-on{flex:1;padding:8px;background:#ede9fe;border:1.5px solid #c4b5fd;border-radius:8px;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font)}
+.btn-afam-off{flex:1;padding:8px;background:var(--red-bg);border:1.5px solid #fecaca;border-radius:8px;color:var(--red);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font)}
+.btn-acupo{flex:1;padding:8px;background:#dbeafe;border:1.5px solid #93c5fd;border-radius:8px;color:var(--blue);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font)}
 .demo-badge{font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:6px}
 .demo-badge.activa{background:#fef3c7;color:var(--warn)}
 .demo-badge.vencida{background:var(--red-bg);color:var(--red)}
@@ -363,7 +368,7 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
     </div>
     <div class="auth-title" id="auth-title">Bienvenido</div>
     <div class="auth-sub">Tu historial de salud, siempre a mano</div>
-    <div class="plan-selector" id="plan-selector">
+    <div class="plan-selector" id="plan-selector" style="display:none">
       <div class="plan-opt active" id="plan-individual">
         <div class="plan-opt-icon">👤</div>
         <div class="plan-opt-label">Individual</div>
@@ -430,7 +435,7 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
 <!-- APP -->
 <div id="screen-app" class="screen">
   <div class="app-header">
-    <div class="app-header-brand" id="app-logo">Salud<span>AR</span></div>
+    <div class="app-header-brand" id="app-logo">Salud<span>AR</span><span class="header-anim-icon" aria-hidden="true">💧</span></div>
     <div class="app-header-right" id="app-header-right">
       <span class="plan-tag" id="plan-tag">Individual</span>
       <button class="icon-btn" id="btn-theme-app">🌙</button>
@@ -688,7 +693,18 @@ if(_inviteCode){
         return;
       }
       const inv=invSnap.data();
-      if(inv.expiry?.toMillis?.()<Date.now()||inv.usado===true){
+      if(inv.usado===true){
+        document.getElementById("invite-perfil-nombre").textContent="Ya te uniste a este perfil ✅";
+        document.getElementById("invite-expired-msg").innerHTML="Esta invitación ya fue usada. Iniciá sesión con Google normalmente para entrar.";
+        document.getElementById("invite-expired-msg").style.display="block";
+        document.getElementById("invite-valid-wrap").style.display="none";
+        document.getElementById("invite-already-logged").style.display="none";
+        window.history.replaceState({},"",window.location.pathname);
+        activeInvite=null;
+        setTimeout(()=>showScreen("screen-login"),1800);
+        return;
+      }
+      if(inv.expiry?.toMillis?.()<Date.now()){
         document.getElementById("invite-expired-msg").style.display="block";
         document.getElementById("invite-valid-wrap").style.display="none";
         document.getElementById("invite-already-logged").style.display="none";
@@ -881,15 +897,26 @@ async function loadAdminUsers(){
           <button class="btn-aact" data-uid="${d.id}">✅ Activar completo</button>
         </div>`;
     }
+    const familiarActions=u.familiarHabilitado
+      ? `<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
+          <input type="number" min="1" max="20" value="${u.limiteMiembros||3}" style="width:56px;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font)" data-cupo-uid="${d.id}"/>
+          <button class="btn-acupo" data-uid="${d.id}">💾 Guardar cupo</button>
+          <button class="btn-afam-off" data-uid="${d.id}">🚫 Deshabilitar Familiar</button>
+        </div>`
+      : `<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
+          <input type="number" min="1" max="20" value="3" style="width:56px;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font)" data-cupo-uid="${d.id}"/>
+          <button class="btn-afam-on" data-uid="${d.id}">👨‍👩‍👧 Habilitar Familiar</button>
+        </div>`;
     return`<div class="admin-card">
       <div class="admin-card-title">${u.nombre||u.email}${ban?'<span class="ban-badge">BANEADO</span>':""} ${demoBadge}</div>
-      <div class="admin-card-sub">${u.email} · Plan ${u.plan||"individual"} · ${u.esFamiliar?"Familiar vinculado":"Titular"}</div>
+      <div class="admin-card-sub">${u.email} · Plan ${u.plan||"individual"} · ${u.esFamiliar?"Familiar vinculado":"Titular"} · ${u.familiarHabilitado?`Familiar habilitado (cupo ${u.limiteMiembros||3})`:"Familiar no habilitado"}</div>
       ${demoInfo}
       <div class="admin-card-actions" style="margin-top:8px">
         ${ban?`<button class="btn-aunban" data-uid="${d.id}">✅ Desbanear</button>`:`<button class="btn-aban" data-uid="${d.id}">🚫 Banear</button>`}
         <button class="btn-adel" data-uid="${d.id}">🗑️ Eliminar</button>
       </div>
       ${demoActions}
+      ${familiarActions}
     </div>`;
   }).join("");
 }
@@ -906,6 +933,9 @@ document.getElementById("admin-users-list").addEventListener("click",async e=>{
   const del=e.target.closest(".btn-adel[data-uid]");
   const ext=e.target.closest(".btn-aext");
   const act=e.target.closest(".btn-aact");
+  const famOn=e.target.closest(".btn-afam-on");
+  const famOff=e.target.closest(".btn-afam-off");
+  const cupo=e.target.closest(".btn-acupo");
   if(ban&&confirm("¿Banear este usuario?")){await updateDoc(doc(db,"usuarios",ban.dataset.uid),{banned:true});toast("Usuario baneado");await loadAdminUsers();}
   if(unban){await updateDoc(doc(db,"usuarios",unban.dataset.uid),{banned:false});toast("Usuario desbaneado");await loadAdminUsers();}
   if(del&&confirm("¿Eliminar este usuario?")){await deleteDoc(doc(db,"usuarios",del.dataset.uid));toast("Usuario eliminado");await loadAdminUsers();}
@@ -922,6 +952,22 @@ document.getElementById("admin-users-list").addEventListener("click",async e=>{
   if(act&&confirm("¿Activar cuenta completa sin límite?")){
     await updateDoc(doc(db,"usuarios",act.dataset.uid),{status:"activo",demoExpiry:null});
     toast("Cuenta activada completa ✅","ok");await loadAdminUsers();
+  }
+  if(famOn){
+    const cupoInput=document.querySelector(`input[data-cupo-uid="${famOn.dataset.uid}"]`);
+    const limiteMiembros=parseInt(cupoInput?.value)||3;
+    await updateDoc(doc(db,"usuarios",famOn.dataset.uid),{familiarHabilitado:true,plan:"familiar",limiteMiembros});
+    toast(`Familiar habilitado (cupo ${limiteMiembros}) ✅`,"ok");await loadAdminUsers();
+  }
+  if(famOff&&confirm("¿Deshabilitar el modo Familiar para este usuario? (los miembros ya vinculados no se eliminan)")){
+    await updateDoc(doc(db,"usuarios",famOff.dataset.uid),{familiarHabilitado:false,plan:"individual"});
+    toast("Familiar deshabilitado","ok");await loadAdminUsers();
+  }
+  if(cupo){
+    const cupoInput=document.querySelector(`input[data-cupo-uid="${cupo.dataset.uid}"]`);
+    const limiteMiembros=parseInt(cupoInput?.value)||3;
+    await updateDoc(doc(db,"usuarios",cupo.dataset.uid),{limiteMiembros});
+    toast(`Cupo actualizado a ${limiteMiembros} ✅`,"ok");await loadAdminUsers();
   }
 });
 document.getElementById("admin-perfiles-list").addEventListener("click",async e=>{
@@ -1044,7 +1090,7 @@ document.getElementById("toggle-mode").addEventListener("click",()=>{
   document.getElementById("btn-auth").textContent=isRegister?"Crear cuenta →":"Ingresar →";
   document.getElementById("toggle-mode").textContent=isRegister?"Ya tengo cuenta":"Registrarse";
   document.getElementById("auth-title").textContent=isRegister?"Crear cuenta":"Bienvenido";
-  document.getElementById("plan-selector").style.display=isRegister?"grid":"none";
+  document.getElementById("plan-selector").style.display="none"; // el plan Familiar ahora se habilita solo desde el panel admin
   document.getElementById("field-nombre").classList.toggle("hf",!isRegister);
 });
 document.getElementById("f-pass").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("btn-auth").click();});
@@ -1456,478 +1502,4 @@ function renderPerfil(){
       <div class="perfil-dato-row"><span class="perfil-dato-label">Alergias</span><span class="perfil-dato-val">${sanitizeHTML(p.alergias||"Ninguna")}</span></div>
       <div class="perfil-dato-row"><span class="perfil-dato-label">Medicación crónica</span><span class="perfil-dato-val">${sanitizeHTML(p.medicacionCronica||"Ninguna")}</span></div>
       <div class="perfil-dato-row"><span class="perfil-dato-label">Obra social / Prepaga</span><span class="perfil-dato-val">${sanitizeHTML(p.obraSocial||"—")}</span></div>
-      ${puedoEditarPerfil()?`<button class="btn-sm" id="btn-editar-perfil-datos" style="width:100%;justify-content:center;margin-top:12px">✏️ Editar datos</button>`:""}
-    </div>
-    ${!esFamiliar?`
-    <div class="familiar-banner">
-      <div><h3>Grupo familiar</h3><p>Invitá a alguien a ver o editar este perfil</p></div>
-      <div style="font-size:36px">👨‍👩‍👧</div>
-    </div>
-    <div class="invite-section">
-      <div class="invite-section-title">🔗 Invitar persona</div>
-      <div class="field"><label>Rol del invitado</label>
-        <select id="invite-role-select" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;color:var(--text);font-size:15px;outline:none">
-          <option value="editor">✏️ Editor — puede ver y editar medicación/turnos</option>
-          <option value="veedor">👁 Veedor — solo puede ver</option>
-        </select>
-      </div>
-      <div id="invite-wrap">
-        <button class="btn-primary" style="margin-bottom:0" id="btn-gen-invite">Generar link de invitación</button>
-      </div>
-    </div>
-    <div id="miembros-list"></div>
-    `:""}
-    <div class="card">
-      <div class="card-title">⚙️ Cuenta</div>
-      <div class="perfil-dato-row"><span class="perfil-dato-label">Email</span><span class="perfil-dato-val">${me?.email||"—"}</span></div>
-    </div>
-    <button class="btn-sm danger" id="btn-logout-app" style="width:100%;justify-content:center;padding:13px;margin-top:8px">⏻ Cerrar sesión</button>`;
-  el.querySelector("#btn-logout-app")?.addEventListener("click",()=>signOut(auth));
-  el.querySelector("#btn-editar-perfil-datos")?.addEventListener("click",abrirModalPerfilDatos);
-  el.querySelector("#btn-activar-notif")?.addEventListener("click",activarNotificaciones);
-  if(!esFamiliar){renderMiembros();bindInviteListeners();}
-}
-
-function renderMiembros(){
-  const el=document.getElementById("miembros-list");
-  if(!el)return;
-  const miembros=miembrosPerfil.filter(m=>m.uid!==me.uid);
-  if(!miembros.length){el.innerHTML='<div style="font-size:13px;color:var(--muted);text-align:center;padding:12px">Nadie más vinculado a este perfil todavía</div>';return;}
-  el.innerHTML=miembros.map(m=>{
-    const rolLabel=m.rol==="veedor"?"👁 Veedor — solo lectura":"✏️ Editor";
-    return`<div class="miembro-card">
-      <div class="miembro-av">${sanitizeHTML((m.nombre||m.email||"?").substring(0,2).toUpperCase())}</div>
-      <div class="miembro-info"><div class="miembro-nombre">${sanitizeHTML(m.nombre||m.email)}</div><div class="miembro-rol">${rolLabel}</div></div>
-      <button class="btn-sm danger" data-quitar-miembro="${m.id}">🗑</button>
-    </div>`;
-  }).join("");
-  el.querySelectorAll("[data-quitar-miembro]").forEach(btn=>btn.addEventListener("click",()=>quitarMiembroPerfil(btn.dataset.quitarMiembro)));
-}
-
-function bindInviteListeners(){
-  document.getElementById("btn-gen-invite")?.addEventListener("click",async()=>{
-    const rol=document.getElementById("invite-role-select").value;
-    const btn=document.getElementById("btn-gen-invite");
-    btn.disabled=true;btn.textContent="Generando...";
-    try{
-      const expiry=new Date(Date.now()+24*60*60*1000);
-      const code=Math.random().toString(36).substring(2,10)+Date.now().toString(36);
-      await setDoc(doc(db,"invitacionesSalud",code),{perfilId:perfilActivo.id,titularUid:me.uid,rol,expiry:Timestamp.fromDate(expiry),usado:false,createdAt:serverTimestamp()});
-      const baseUrl=window.location.origin+window.location.pathname;
-      const link=`${baseUrl}?invite=${code}`;
-      const wrap=document.getElementById("invite-wrap");
-      const horaExp=expiry.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
-      const rolLabel=rol==="veedor"?"Veedor (solo lectura)":"Editor";
-      const waText=encodeURIComponent(`¡Hola! Te invito a ver el perfil de salud de ${perfilActivo.nombre} en SaludAR, como ${rolLabel}. El link es válido por 24 horas:\n${link}`);
-      wrap.innerHTML=`
-        <div class="invite-row">
-          <div class="invite-link-box">${link}</div>
-          <button class="btn-copy-link" data-copy="${link}">📋 Copiar</button>
-        </div>
-        <button class="btn-wa-invite" data-wa="${waText}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.555 4.122 1.524 5.854L.055 23.454a.75.75 0 0 0 .919.919l5.6-1.469A11.951 11.951 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.951 9.951 0 0 1-5.073-1.386l-.361-.214-3.754.984.998-3.648-.235-.374A9.956 9.956 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-          Compartir por WhatsApp
-        </button>
-        <div class="invite-expiry">⏰ Vence hoy a las ${horaExp} · Rol: ${rolLabel}</div>
-        <div style="margin-top:10px"><button class="btn-primary" style="background:var(--surface2);color:var(--muted);border:1.5px solid var(--border);box-shadow:none;font-size:13px" id="btn-gen-invite-new">🔄 Generar nuevo link</button></div>`;
-      wrap.querySelector("[data-copy]")?.addEventListener("click",e=>{
-        navigator.clipboard.writeText(e.target.dataset.copy).then(()=>toast("Link copiado","ok")).catch(()=>{
-          const ta=document.createElement("textarea");ta.value=e.target.dataset.copy;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);toast("Link copiado","ok");
-        });
-      });
-      wrap.querySelector("[data-wa]")?.addEventListener("click",e=>{window.open(`https://wa.me/?text=${e.target.closest("[data-wa]").dataset.wa}`,"_blank");});
-      wrap.querySelector("#btn-gen-invite-new")?.addEventListener("click",()=>renderPerfil());
-    }catch(e){toast("Error al generar el link","err");btn.disabled=false;btn.textContent="Generar link de invitación";}
-  });
-}
-
-async function quitarMiembroPerfil(miembroId){
-  if(!confirm("¿Quitar a esta persona del perfil familiar?"))return;
-  try{
-    await deleteDoc(doc(db,"perfiles",perfilActivo.id,"miembros",miembroId));
-    miembrosPerfil=miembrosPerfil.filter(m=>m.id!==miembroId);
-    toast("Persona removida del perfil");
-    renderMiembros();
-  }catch(e){toast("Error al quitar","err");}
-}
-
-function abrirModalPerfilDatos(){
-  const p=perfilActivo;if(!p)return;
-  document.getElementById("pd-fechaNac").value=p.fechaNac||"";
-  document.getElementById("pd-grupoSanguineo").value=p.grupoSanguineo||"";
-  document.getElementById("pd-alergias").value=p.alergias||"";
-  document.getElementById("pd-medicacionCronica").value=p.medicacionCronica||"";
-  document.getElementById("pd-obraSocial").value=p.obraSocial||"";
-  openModal("modal-perfil-datos");
-}
-document.getElementById("close-perfil-datos").addEventListener("click",()=>closeModal("modal-perfil-datos"));
-document.getElementById("cancel-perfil-datos").addEventListener("click",()=>closeModal("modal-perfil-datos"));
-document.getElementById("modal-perfil-datos").addEventListener("click",e=>{if(e.target.id==="modal-perfil-datos")closeModal("modal-perfil-datos");});
-document.getElementById("save-perfil-datos").addEventListener("click",async()=>{
-  if(!perfilActivo){toast("Sin perfil activo","err");return;}
-  const data={
-    fechaNac:document.getElementById("pd-fechaNac").value,
-    grupoSanguineo:document.getElementById("pd-grupoSanguineo").value,
-    alergias:document.getElementById("pd-alergias").value.trim(),
-    medicacionCronica:document.getElementById("pd-medicacionCronica").value.trim(),
-    obraSocial:document.getElementById("pd-obraSocial").value.trim()
-  };
-  const btn=document.getElementById("save-perfil-datos");btn.disabled=true;btn.textContent="Guardando...";
-  try{
-    await updateDoc(doc(db,"perfiles",perfilActivo.id),data);
-    Object.assign(perfilActivo,data);
-    closeModal("modal-perfil-datos");
-    toast("Datos guardados","ok");
-    renderPerfil();
-  }catch(e){toast("Error al guardar","err");}
-  btn.disabled=false;btn.textContent="Guardar";
-});
-
-const modalEditors={};
-function bindModal(modalId,closeId,cancelId,saveId,campos,coleccion,getArr,renderFn,getExtraData,opts){
-  let editId=null;
-  const modalTitleEl=()=>document.querySelector(`#${modalId} .modal-title`);
-  const tituloBase=modalTitleEl()?modalTitleEl().textContent:"";
-  function limpiarCampos(){campos.forEach(c=>{const el=document.getElementById(c.id);if(el)el.value=c.default??"";});}
-  function abrirParaEditar(item){
-    editId=item.id;
-    campos.forEach(c=>{const el=document.getElementById(c.id);if(el)el.value=item[c.key]??"";});
-    if(opts&&opts.onEditFill)opts.onEditFill(item);
-    const t=modalTitleEl();if(t)t.textContent=tituloBase.replace("Agregar","Editar").replace("Nuevo","Editar").replace("Agendar","Editar");
-    openModal(modalId);
-  }
-  modalEditors[coleccion]=abrirParaEditar;
-  document.getElementById(closeId).addEventListener("click",()=>{editId=null;closeModal(modalId);});
-  document.getElementById(cancelId).addEventListener("click",()=>{editId=null;closeModal(modalId);});
-  document.getElementById(modalId).addEventListener("click",e=>{if(e.target.id===modalId){editId=null;closeModal(modalId);}});
-  document.getElementById(saveId).addEventListener("click",async()=>{
-    if(!perfilActivo){toast("Sin perfil activo","err");return;}
-    const data={};let valid=true;
-    campos.forEach(c=>{const val=document.getElementById(c.id)?.value.trim();if(c.required&&!val){toast(c.label+" es obligatorio","err");valid=false;}else data[c.key]=c.type==="number"?parseFloat(val)||0:val;});
-    if(!valid)return;
-    if(getExtraData)Object.assign(data,getExtraData());
-    const btn=document.getElementById(saveId);btn.disabled=true;btn.textContent="Guardando...";
-    try{
-      if(editId){
-        await updateDoc(doc(db,"perfiles",perfilActivo.id,coleccion,editId),data);
-        const arr=getArr();
-        const idx=arr.findIndex(x=>x.id===editId);
-        if(idx>-1)arr[idx]={...arr[idx],...data};
-        toast("Actualizado correctamente","ok");
-      } else {
-        data.createdAt=serverTimestamp();
-        const ref=await addDoc(collection(db,"perfiles",perfilActivo.id,coleccion),data);
-        const arr=getArr();
-        if(opts&&opts.prepend)arr.unshift({id:ref.id,...data});else arr.push({id:ref.id,...data});
-        toast("Guardado correctamente","ok");
-      }
-      closeModal(modalId);
-      const t=modalTitleEl();if(t)t.textContent=tituloBase;
-      editId=null;
-      limpiarCampos();
-      renderFn();
-    }catch(e){toast("Error al guardar","err");}
-    btn.disabled=false;btn.textContent="Guardar";
-  });
-}
-function btnAcciones(coleccion,id,onDelete){
-  return`<button class="btn-sm" data-edit-item="${coleccion}:${id}" style="padding:4px 10px;font-size:11px">✏️ Editar</button><button class="btn-sm danger" style="padding:4px 10px;font-size:11px" data-del-item="${coleccion}:${id}">🗑️ Eliminar</button>`;
-}
-document.addEventListener("click",async e=>{
-  const editBtn=e.target.closest("[data-edit-item]");
-  if(editBtn){
-    const[coleccion,id]=editBtn.dataset.editItem.split(":");
-    const arrMap={medicamentos,estudios,turnos,medicos,historial};
-    const item=(arrMap[coleccion]||[]).find(x=>x.id===id);
-    if(item&&modalEditors[coleccion])modalEditors[coleccion](item);
-    return;
-  }
-  const delBtn=e.target.closest("[data-del-item]");
-  if(delBtn){
-    const[coleccion,id]=delBtn.dataset.delItem.split(":");
-    if(!confirm("¿Eliminar este registro?"))return;
-    try{
-      await deleteDoc(doc(db,"perfiles",perfilActivo.id,coleccion,id));
-      const arrMap2={medicamentos,estudios,turnos,medicos,historial};
-      const arr=arrMap2[coleccion];
-      const idx=arr?arr.findIndex(x=>x.id===id):-1;
-      if(idx>-1)arr.splice(idx,1);
-      if(coleccion==="medicamentos"){renderMedicacion();renderInicio();}
-      else if(coleccion==="estudios")renderEstudios();
-      else if(coleccion==="turnos")renderTurnos();
-      else if(coleccion==="medicos")renderDirectorio();
-      else if(coleccion==="historial")renderHistorial();
-      toast("Eliminado correctamente","ok");
-    }catch(err){toast("Error al eliminar","err");}
-  }
-});
-
-// ── HORARIOS DE MEDICACIÓN — filas con selector de hora táctil ──
-function syncHorariosHidden(){
-  const valores=[...document.querySelectorAll("#med-horarios-rows input[type=time]")].map(i=>i.value).filter(Boolean);
-  document.getElementById("med-horarios").value=valores.join(",");
-}
-function agregarFilaHorario(valor=""){
-  const row=document.createElement("div");
-  row.className="horario-row";
-  row.innerHTML=`<input type="time" value="${valor}"/><button type="button" class="btn-del-horario">✕</button>`;
-  row.querySelector("input").addEventListener("change",syncHorariosHidden);
-  row.querySelector(".btn-del-horario").addEventListener("click",()=>{
-    const rows=document.getElementById("med-horarios-rows");
-    if(rows.children.length>1)row.remove();
-    else row.querySelector("input").value="";
-    syncHorariosHidden();
-  });
-  document.getElementById("med-horarios-rows").appendChild(row);
-}
-function setFilasHorario(horariosCSV){
-  document.getElementById("med-horarios-rows").innerHTML="";
-  const lista=(horariosCSV||"").split(",").map(h=>h.trim()).filter(Boolean);
-  if(lista.length===0)agregarFilaHorario();
-  else lista.forEach(h=>agregarFilaHorario(h));
-  syncHorariosHidden();
-}
-document.getElementById("btn-add-horario").addEventListener("click",()=>{agregarFilaHorario();syncHorariosHidden();});
-function abrirModalMedNuevo(){
-  setFilasHorario("");
-  const t=document.querySelector("#modal-medicacion .modal-title");if(t)t.textContent="💊 Agregar medicamento";
-  document.getElementById("med-nombre").value="";
-  document.getElementById("med-dosis").value="";
-  document.getElementById("med-indicaciones").value="";
-  document.getElementById("med-frecuencia").value="todos";
-  openModal("modal-medicacion");
-}
-
-
-bindModal("modal-medicacion","close-med","cancel-med","save-med",[
-  {id:"med-nombre",key:"nombre",label:"El nombre",required:true},
-  {id:"med-dosis",key:"dosis"},
-  {id:"med-horarios",key:"horarios",label:"Los horarios",required:true},
-  {id:"med-indicaciones",key:"indicaciones"},
-  {id:"med-frecuencia",key:"frecuencia",default:"todos"},
-],"medicamentos",()=>medicamentos,()=>{
-  document.getElementById("med-frecuencia").value=document.getElementById("med-frecuencia").value||"todos";
-  if(currentPage==="medicacion")renderMedicacion();
-  renderInicio();
-},null,{onEditFill:item=>{
-  setFilasHorario(item.horarios);
-}});
-
-// ── FOTO DE ESTUDIO — CÁMARA Y COMPRESIÓN ─────────────────
-let fotoEstudioBase64=null;
-
-function comprimirImagen(file,maxWidth=1024,quality=0.72){
-  return new Promise(resolve=>{
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      const img=new Image();
-      img.onload=()=>{
-        const canvas=document.createElement("canvas");
-        let w=img.width,h=img.height;
-        if(w>maxWidth){h=Math.round(h*maxWidth/w);w=maxWidth;}
-        canvas.width=w;canvas.height=h;
-        const ctx=canvas.getContext("2d");
-        ctx.drawImage(img,0,0,w,h);
-        const base64=canvas.toDataURL("image/jpeg",quality);
-        resolve(base64);
-      };
-      img.src=ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-document.getElementById("e-foto-input").addEventListener("change",async e=>{
-  const file=e.target.files[0];
-  if(!file)return;
-  const wrap=document.getElementById("e-foto-wrap");
-  wrap.style.borderColor="var(--blue)";
-  const base64=await comprimirImagen(file);
-  fotoEstudioBase64=base64;
-  // Calcular peso
-  const bytes=Math.round((base64.length*3)/4);
-  const kb=Math.round(bytes/1024);
-  // Mostrar preview
-  document.getElementById("e-foto-img").src=base64;
-  document.getElementById("e-foto-size").textContent=`📦 ${kb} KB`;
-  document.getElementById("e-foto-preview").style.display="block";
-  document.getElementById("e-foto-placeholder").style.display="none";
-  document.getElementById("e-foto-quitar").style.display="block";
-  if(kb>800)toast("La imagen pesa más de 800 KB — intentá con mejor iluminación","err");
-});
-
-document.getElementById("e-foto-quitar").addEventListener("click",e=>{
-  e.stopPropagation();
-  fotoEstudioBase64=null;
-  document.getElementById("e-foto-input").value="";
-  document.getElementById("e-foto-img").src="";
-  document.getElementById("e-foto-preview").style.display="none";
-  document.getElementById("e-foto-placeholder").style.display="block";
-  document.getElementById("e-foto-quitar").style.display="none";
-  document.getElementById("e-foto-wrap").style.borderColor="";
-});
-
-function resetFotoEstudioUI(){
-  fotoEstudioBase64=null;
-  document.getElementById("e-foto-input").value="";
-  document.getElementById("e-foto-img").src="";
-  document.getElementById("e-foto-preview").style.display="none";
-  document.getElementById("e-foto-placeholder").style.display="block";
-  document.getElementById("e-foto-quitar").style.display="none";
-  document.getElementById("e-foto-wrap").style.borderColor="";
-}
-bindModal("modal-estudio","close-estudio","cancel-estudio","save-estudio",[
-  {id:"e-fecha",key:"fecha",label:"La fecha",required:true},
-  {id:"e-tipo",key:"tipo",label:"El tipo"},
-  {id:"e-lab",key:"laboratorio"},
-  {id:"e-medico",key:"medico"},
-  {id:"e-obs",key:"observaciones"},
-],"estudios",()=>estudios,()=>{renderEstudios();resetFotoEstudioUI();},()=>fotoEstudioBase64?{foto:fotoEstudioBase64}:{},{prepend:true,onEditFill:item=>{
-  if(item.foto){
-    fotoEstudioBase64=item.foto;
-    const kb=Math.round((item.foto.length*3)/4/1024);
-    document.getElementById("e-foto-img").src=item.foto;
-    document.getElementById("e-foto-size").textContent=`📦 ${kb} KB`;
-    document.getElementById("e-foto-preview").style.display="block";
-    document.getElementById("e-foto-placeholder").style.display="none";
-    document.getElementById("e-foto-quitar").style.display="block";
-  } else resetFotoEstudioUI();
-}});
-
-bindModal("modal-turno","close-turno","cancel-turno","save-turno",[
-  {id:"t-fecha",key:"fecha",label:"La fecha",required:true},
-  {id:"t-hora",key:"hora",label:"La hora",required:true},
-  {id:"t-esp",key:"especialidad"},
-  {id:"t-medico",key:"medico"},
-  {id:"t-lugar",key:"lugar"},
-  {id:"t-notas",key:"notas"},
-],"turnos",()=>turnos,renderTurnos);
-
-bindModal("modal-medico","close-medico","cancel-medico","save-medico",[
-  {id:"m-nombre",key:"nombre",label:"El nombre",required:true},
-  {id:"m-esp",key:"especialidad",label:"La especialidad",required:true},
-  {id:"m-tel",key:"telefono"},
-  {id:"m-os",key:"obraSocial"},
-  {id:"m-dir",key:"direccion"},
-  {id:"m-notas",key:"notas"},
-],"medicos",()=>medicos,renderDirectorio);
-
-bindModal("modal-historial","close-hist","cancel-hist","save-hist",[
-  {id:"h-fecha",key:"fecha",label:"La fecha",required:true},
-  {id:"h-desc",key:"descripcion",label:"La descripción",required:true},
-  {id:"h-tipo",key:"tipo"},
-  {id:"h-medico",key:"medico"},
-  {id:"h-lugar",key:"lugar"},
-],"historial",()=>historial,renderHistorial,null,{prepend:true});
-
-document.getElementById("btn-google").addEventListener("click",async()=>{
-  const btn=document.getElementById("btn-google");
-  btn.disabled=true;btn.textContent="Conectando...";
-  try{
-    const provider=new GoogleAuthProvider();
-    await signInWithPopup(auth,provider);
-  }catch(e){
-    console.error(e);
-    const errEl=document.getElementById("auth-err");
-    if(errEl){errEl.textContent="Error al iniciar con Google. Intentá de nuevo.";errEl.style.display="block";errEl.classList.add("show");}
-  }
-  btn.disabled=false;
-});
-</script>
-
-<!--
-FIRESTORE SECURITY RULES — SaludAR con grupo familiar (roles editor/veedor)
-
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    function soyMiembroEditor(perfilId) {
-      return exists(/databases/$(database)/documents/perfiles/$(perfilId)/miembros/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/perfiles/$(perfilId)/miembros/$(request.auth.uid)).data.rol == 'editor';
-    }
-    function soyMiembroCualquiera(perfilId) {
-      return exists(/databases/$(database)/documents/perfiles/$(perfilId)/miembros/$(request.auth.uid));
-    }
-
-    match /usuarios/{userId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null;
-    }
-
-    match /invitacionesSalud/{id} {
-      allow read: if true; // necesario para que alguien sin cuenta vea la invitación antes de registrarse
-      allow create: if request.auth != null;
-      allow update: if request.auth != null; // marcar como usada desde el registro
-    }
-
-    match /perfiles/{perfilId} {
-      allow read: if request.auth != null && (resource.data.titularUid==request.auth.uid || soyMiembroCualquiera(perfilId));
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && (resource.data.titularUid==request.auth.uid || soyMiembroEditor(perfilId));
-      allow delete: if request.auth != null && resource.data.titularUid==request.auth.uid;
-
-      match /miembros/{miembroId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null; // se crea durante el join desde la invitación, o por migración automática
-        allow delete: if request.auth != null && (
-          request.auth.uid == miembroId ||
-          get(/databases/$(database)/documents/perfiles/$(perfilId)).data.titularUid==request.auth.uid
-        );
-      }
-
-      match /estudios/{docId} {
-        allow read: if request.auth != null;
-        allow create, update, delete: if request.auth != null && (
-          get(/databases/$(database)/documents/perfiles/$(perfilId)).data.titularUid==request.auth.uid ||
-          soyMiembroEditor(perfilId)
-        );
-      }
-      match /turnos/{docId} {
-        allow read: if request.auth != null;
-        allow create, update, delete: if request.auth != null && (
-          get(/databases/$(database)/documents/perfiles/$(perfilId)).data.titularUid==request.auth.uid ||
-          soyMiembroEditor(perfilId)
-        );
-      }
-      match /medicos/{docId} {
-        allow read: if request.auth != null;
-        allow create, update, delete: if request.auth != null && (
-          get(/databases/$(database)/documents/perfiles/$(perfilId)).data.titularUid==request.auth.uid ||
-          soyMiembroEditor(perfilId)
-        );
-      }
-      match /historial/{docId} {
-        allow read: if request.auth != null;
-        allow create, update, delete: if request.auth != null && (
-          get(/databases/$(database)/documents/perfiles/$(perfilId)).data.titularUid==request.auth.uid ||
-          soyMiembroEditor(perfilId)
-        );
-      }
-      match /medicamentos/{docId} {
-        allow read: if request.auth != null;
-        allow create, update, delete: if request.auth != null && (
-          get(/databases/$(database)/documents/perfiles/$(perfilId)).data.titularUid==request.auth.uid ||
-          soyMiembroEditor(perfilId)
-        );
-      }
-    }
-  }
-}
-
-ÍNDICES COMPUESTOS
-1. perfiles/{id}/estudios   | fecha DESC
-2. perfiles/{id}/turnos     | (según orderBy usado en loadPerfilData)
-3. usuarios                 | inviteCode ASC, plan ASC (sistema viejo, ya no se usa para nuevas invitaciones)
-
-NOTA PARA RUBÉN:
-- invitacionesSalud es la colección nueva para el sistema de invitación por link (igual patrón que SecurePro).
-- La subcolección miembros dentro de cada perfil reemplaza al campo familiarUid único —
-  ahora un perfil puede tener varios cuidadores, cada uno con su rol (editor o veedor).
-- La migración del familiar viejo (vinculado por código manual) es automática: la primera vez
-  que esa persona entre con el código nuevo del archivo, su vínculo se copia solo a la subcolección
-  miembros con rol "editor" (mismo acceso que tenía antes).
--->
-</body>
-</html>
+      ${puedoEditarPerfil()?`<button class="btn-sm" id="btn-editar-perfil-datos"
