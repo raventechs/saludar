@@ -827,7 +827,7 @@ async function activarNotificaciones(){
     if(!("Notification" in window)||!(await isSupported())){toast("Este navegador no soporta notificaciones","err");return;}
     const permiso=await Notification.requestPermission();
     if(permiso!=="granted"){toast("Necesitamos tu permiso para avisarte","err");return;}
-    const reg=await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+    const reg=await navigator.serviceWorker.register("/saludar/firebase-messaging-sw.js");
     const messaging=getMessaging();
     const token=await getToken(messaging,{vapidKey:VAPID_KEY,serviceWorkerRegistration:reg});
     if(!token){toast("No se pudo activar — intentá de nuevo","err");return;}
