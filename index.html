@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="description" content="Gestión de medicación, turnos y salud familiar.">
 <meta name="theme-color" content="#0f1e3d">
+<link rel="manifest" href="/saludar/manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -877,6 +878,14 @@ async function activarNotificaciones(){
     await updateDoc(doc(db,"perfiles",perfilActivo.id),{notifActivas:true});
     perfilActivo.notifActivas = true;
     await enviarRecordatoriosAlSW();
+
+    // Registrar Periodic Background Sync (requiere PWA instalada)
+    if(swNotifReg && 'periodicSync' in swNotifReg) {
+      try {
+        await swNotifReg.periodicSync.register('saludar-check', { minInterval: 60 * 60 * 1000 }); // cada hora
+      } catch(e) { /* no disponible en este navegador — el setInterval en SW es el fallback */ }
+    }
+
     toast("Notificaciones activadas ✅","ok");
     if(currentPage==="perfil") renderPerfil();
   }catch(e){
