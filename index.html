@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SaludAR v2.1 — 2026-07-02 — P1+P2+P5 ROBUSTEZ -->
+<!-- SaludAR v2.5 — 2026-07-02 — P1+P2+P3+P5 ROBUSTEZ + notif locales SW -->
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
@@ -607,7 +607,7 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut,GoogleAuthProvider,signInWithPopup}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import{getFirestore,collection,collectionGroup,doc,setDoc,addDoc,getDocs,getDoc,updateDoc,deleteDoc,query,where,orderBy,serverTimestamp,Timestamp,arrayUnion,increment}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import{getMessaging,getToken,isSupported}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
+// firebase-messaging reemplazado por SW local (v2.2)
 
 const FB={
   apiKey:"AIzaSyAl_gMgQoZa6F-tInkoc61AA8ggzMhlRPY",
@@ -836,21 +836,65 @@ function closeModal(id){document.getElementById(id).classList.remove("open");}
 
 // ── NOTIFICACIONES PUSH ────────────────────────────────────
 const VAPID_KEY="BKnuPSxP4r3-lWyIvSKchVhEwH2cckvvCWJ2SL91D5JdbBsOv5xwsWzKoOki_vv1fJJQlpn9ecZQnZ22vA7Zz88";
+// NOTIFICACIONES LOCALES — SW (v2.2, reemplaza FCM)
+let swNotifReg = null;
+
 async function activarNotificaciones(){
   if(!perfilActivo){toast("Elegí un perfil primero","err");return;}
   try{
-    if(!("Notification" in window)||!(await isSupported())){toast("Este navegador no soporta notificaciones","err");return;}
-    const permiso=await Notification.requestPermission();
-    if(permiso!=="granted"){toast("Necesitamos tu permiso para avisarte","err");return;}
-    const reg=await navigator.serviceWorker.register("/saludar/firebase-messaging-sw.js");
-    const messaging=getMessaging();
-    const token=await getToken(messaging,{vapidKey:VAPID_KEY,serviceWorkerRegistration:reg});
-    if(!token){toast("No se pudo activar — intentá de nuevo","err");return;}
-    await updateDoc(doc(db,"perfiles",perfilActivo.id),{fcmTokens:arrayUnion(token)});
-    perfilActivo.fcmTokens=[...(perfilActivo.fcmTokens||[]),token];
+    if(!("Notification" in window)){toast("Este navegador no soporta notificaciones","err");return;}
+    const permiso = await Notification.requestPermission();
+    if(permiso !== "granted"){toast("Necesitamos tu permiso para avisarte","err");return;}
+    if(!("serviceWorker" in navigator)){toast("SW no disponible","err");return;}
+    swNotifReg = await navigator.serviceWorker.register("/saludar/sw-saludar-notif.js");
+    await updateDoc(doc(db,"perfiles",perfilActivo.id),{notifActivas:true});
+    perfilActivo.notifActivas = true;
+    enviarRecordatoriosAlSW();
     toast("Notificaciones activadas ✅","ok");
     if(currentPage==="perfil")renderPerfil();
-  }catch(e){console.error(e);toast("Error al activar notificaciones","err");}
+  }catch(e){logError("activarNotificaciones",e);toast("Error al activar notificaciones","err");}
+}
+
+// Sincronizar medicamentos + turnos + tomas al SW
+async function enviarRecordatoriosAlSW(){
+  if(!perfilActivo) return;
+  try{
+    const sw = swNotifReg || await navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js");
+    if(!sw?.active) return;
+    sw.active.postMessage({
+      type: "SET_RECORDATORIOS",
+      medicamentos: medicamentos
+        .filter(m => m.activo !== false)
+        .map(m => ({ id: m.id, nombre: m.nombre, dosis: m.dosis||"", horarios: m.horarios||"", activo: true })),
+      turnos: [...(turnos||[]), ...(estudios||[])]
+        .map(t => ({ id: t.id, titulo: t.titulo||t.especialidad||"Turno", fecha: t.fecha, hora: t.hora||"09:00", tipo: t.tipo||"Turno" }))
+    });
+    // Sincronizar tomas de hoy
+    sw.active.postMessage({ type: "SET_TOMAS_HOY", tomasHoy });
+    // Sincronizar config de features plus
+    const notifPorToma = !!(perfilActivo?.features?.notifPorToma);
+    sw.active.postMessage({ type: "SET_CONFIG", notifPorToma });
+  }catch(e){ logError("enviarRecordatoriosAlSW",e); }
+}
+
+// Llamar a enviarRecordatoriosAlSW cada vez que el usuario marca una toma
+function sincronizarTomasAlSW(){
+  navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js").then(sw => {
+    if(sw?.active) sw.active.postMessage({ type: "SET_TOMAS_HOY", tomasHoy });
+  }).catch(()=>{});
+}
+
+// Resetear notificados a medianoche
+function resetNotifAMedianoche(){
+  const ahora = new Date();
+  const mañana = new Date(ahora);
+  mañana.setDate(ahora.getDate()+1);
+  mañana.setHours(0,1,0,0);
+  setTimeout(async ()=>{
+    const sw = await navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js");
+    sw?.active?.postMessage({type:"RESET_NOTIFICADOS"});
+    resetNotifAMedianoche();
+  }, mañana - ahora);
 }
 
 ["login-logo","app-logo"].forEach(id=>{
@@ -913,11 +957,18 @@ async function loadAdminUsers(){
           <button class="btn-aact" data-uid="${d.id}">✅ Activar completo</button>
         </div>`;
     }
+    const limiteActual = u.features?.limitePerfiles || 1;
     const familiarActions=u.familiarHabilitado
       ? `<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
           <input type="number" min="1" max="20" value="${u.limiteMiembros||3}" style="width:56px;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font)" data-cupo-uid="${d.id}"/>
           <button class="btn-acupo" data-uid="${d.id}">💾 Guardar cupo</button>
           <button class="btn-afam-off" data-uid="${d.id}">🚫 Deshabilitar Familiar</button>
+          <select onchange="setLimitePerfiles('${d.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12px;background:var(--surface);color:var(--text)">
+            <option value="1" ${limiteActual===1?'selected':''}>1 perfil</option>
+            <option value="3" ${limiteActual===3?'selected':''}>3 perfiles</option>
+            <option value="5" ${limiteActual===5?'selected':''}>5 perfiles</option>
+            <option value="99" ${limiteActual===99?'selected':''}>Ilimitado</option>
+          </select>
         </div>`
       : `<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
           <input type="number" min="1" max="20" value="3" style="width:56px;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font)" data-cupo-uid="${d.id}"/>
@@ -972,7 +1023,7 @@ document.getElementById("admin-users-list").addEventListener("click",async e=>{
   if(famOn){
     const cupoInput=document.querySelector(`input[data-cupo-uid="${famOn.dataset.uid}"]`);
     const limiteMiembros=parseInt(cupoInput?.value)||3;
-    await updateDoc(doc(db,"usuarios",famOn.dataset.uid),{familiarHabilitado:true,plan:"familiar",limiteMiembros});
+    await updateDoc(doc(db,"usuarios",famOn.dataset.uid),{familiarHabilitado:true,plan:"familiar",limiteMiembros,"features.limitePerfiles":limiteMiembros});
     toast(`Familiar habilitado (cupo ${limiteMiembros}) ✅`,"ok");await loadAdminUsers();
   }
   if(famOff&&confirm("¿Deshabilitar el modo Familiar para este usuario? (los miembros ya vinculados no se eliminan)")){
@@ -1075,7 +1126,8 @@ onAuthStateChanged(auth,async user=>{
     if(myDoc.banned){toast("Cuenta suspendida","err");await signOut(auth);return;}
     document.getElementById("app-avatar").textContent=(myDoc.nombre||user.email).substring(0,2).toUpperCase();
     const pt=document.getElementById("plan-tag");
-    pt.textContent=myDoc.plan==="familiar"?"👨‍👩‍👧 Familiar":"👤 Individual";
+    pt.textContent=myDoc.plan==="familiar"?"👨‍👩‍👧 Familiar":(myDoc.features?.limitePerfiles>1?"👥 Plus":"👤 Individual");
+    if(myDoc.features?.limitePerfiles>1||myDoc.plan==="familiar") pt.classList.add("familiar");
     if(myDoc.plan==="familiar")pt.classList.add("familiar");
     showScreen("screen-app");
     await loadPerfiles();
@@ -1195,7 +1247,7 @@ async function loadPerfiles(){
   perfilActivo=perfiles[0]||null;
   if(perfilActivo)await loadMiembrosPerfil();
   renderProfileBar();
-  if(perfilActivo)await loadPerfilData();
+  if(perfilActivo){ await loadPerfilData(); enviarRecordatoriosAlSW(); resetNotifAMedianoche(); }
 }
 
 async function loadMiembrosPerfil(){
@@ -1391,7 +1443,7 @@ function renderInicio(){
   el.querySelectorAll(".med-item[data-mkey]").forEach(item=>{
     item.addEventListener("click",()=>{
       const k=item.dataset.mkey;
-      tomasHoy[k]=!tomasHoy[k];
+      tomasHoy[k]=!tomasHoy[k]; sincronizarTomasAlSW();
       saveTomas();
       renderInicio();
     });
@@ -1504,11 +1556,22 @@ function renderPerfil(){
   const p=perfilActivo;if(!p){el.innerHTML=emptyHTML("👤","Sin perfil");return;}
   const esFamiliar=myDoc?.esFamiliar;
   const esFamiliarPlan=myDoc?.plan==="familiar";
-  const notifActivas=(p.fcmTokens||[]).length>0;
+  const notifActivas=!!(p.notifActivas);
   el.innerHTML=`
     <div class="card" style="display:flex;align-items:center;gap:14px;justify-content:space-between">
-      <div><div style="font-weight:700;font-size:14px;color:var(--text)">🔔 Notificaciones</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${notifActivas?"Activadas en este dispositivo o en alguno vinculado":"Recordatorios de medicación y turnos en el celular"}</div></div>
+      <div><div style="font-weight:700;font-size:14px;color:var(--text)">🔔 Notificaciones</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${notifActivas?"Activadas en este dispositivo":"Recordatorios de medicación y turnos en el celular"}</div></div>
       <button class="btn-sm ${notifActivas?"":"gold"}" id="btn-activar-notif">${notifActivas?"Reactivar":"Activar"}</button>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-top:8px;">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--text)">⏰ Aviso por toma individual <span style="background:#f0b84a;color:#000;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px">PLUS</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Notificación exacta a la hora de cada medicamento</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;margin-left:12px;cursor:pointer">
+        <input type="checkbox" id="switch-notif-toma" ${p.features?.notifPorToma?"checked":""} style="opacity:0;width:0;height:0;position:absolute">
+        <span style="position:absolute;inset:0;background:${p.features?.notifPorToma?"#16a34a":"var(--border)"};border-radius:24px;transition:.3s;"></span>
+        <span style="position:absolute;height:18px;width:18px;left:${p.features?.notifPorToma?"23":"3"}px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;"></span>
+      </label>
     </div>
     <div class="card">
       <div class="perfil-header">
@@ -1549,6 +1612,7 @@ function renderPerfil(){
   el.querySelector("#btn-logout-app")?.addEventListener("click",()=>signOut(auth));
   el.querySelector("#btn-editar-perfil-datos")?.addEventListener("click",abrirModalPerfilDatos);
   el.querySelector("#btn-activar-notif")?.addEventListener("click",activarNotificaciones);
+  el.querySelector("#switch-notif-toma")?.addEventListener("change",e=>toggleNotifPorToma(e.target.checked));
   if(!esFamiliar&&myDoc?.familiarHabilitado){renderMiembros();bindInviteListeners();}
 }
 
@@ -1722,7 +1786,7 @@ document.addEventListener("click",async e=>{
       const arr=arrMap2[coleccion];
       const idx=arr?arr.findIndex(x=>x.id===id):-1;
       if(idx>-1)arr.splice(idx,1);
-      if(coleccion==="medicamentos"){renderMedicacion();renderInicio();}
+      if(coleccion==="medicamentos"){renderMedicacion();renderInicio();enviarRecordatoriosAlSW();}
       else if(coleccion==="estudios")renderEstudios();
       else if(coleccion==="turnos")renderTurnos();
       else if(coleccion==="medicos")renderDirectorio();
@@ -1936,6 +2000,36 @@ async function exportarCSV() {
     a.click();
     showToast('CSV exportado');
   } catch(e) { logError('exportCSV', e); }
+}
+
+// Toggle notifPorToma — feature plus
+async function toggleNotifPorToma(val){
+  if(!perfilActivo) return;
+  try{
+    await updateDoc(doc(db,"perfiles",perfilActivo.id),{"features.notifPorToma": val});
+    if(!perfilActivo.features) perfilActivo.features = {};
+    perfilActivo.features.notifPorToma = val;
+    const sw = await navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js");
+    if(sw?.active) sw.active.postMessage({ type: "SET_CONFIG", notifPorToma: val });
+    toast(val ? "Recordatorio por toma activado ✅" : "Recordatorio por toma desactivado","ok");
+  } catch(e){ logError("toggleNotifPorToma",e); toast("Error al guardar","err"); }
+}
+
+// CONTROL LÍMITE PERFILES — feature plus
+function puedeAgregarPerfil() {
+  const limite = myDoc?.features?.limitePerfiles || 1;
+  const actual = perfiles.length;
+  return actual < limite;
+}
+
+function mensajeLimitePerfil() {
+  toast('Para agregar perfiles familiares contactanos — ventas@raventechsapp.com', 'warn');
+}
+
+async function setLimitePerfiles(uid, limite){
+  await updateDoc(doc(db,'usuarios',uid),{'features.limitePerfiles': parseInt(limite)});
+  toast('Límite actualizado a ' + limite + ' perfil(es)');
+  await loadAdminUsers();
 }
 </script>
 
