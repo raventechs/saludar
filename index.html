@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- SaludAR v2.1 — 2026-07-02 — P1+P2+P5 ROBUSTEZ -->
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
@@ -32,7 +33,7 @@
   --shadow:0 2px 8px rgba(0,0,0,.3);--shadow-md:0 4px 20px rgba(0,0,0,.4);
   --green-bg:#052e16;--warn-bg:#1c1000;--red-bg:#3f0f0f;--purple-bg:#2e1065;
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{overflow-x:hidden}*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;transition:background .2s,color .2s}
 input,select,button,textarea{font-family:var(--font)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -449,7 +450,7 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
     <div id="page-estudios" class="page"></div>
     <div id="page-turnos" class="page"></div>
     <div id="page-directorio" class="page"></div>
-    <div id="page-historial" class="page"></div>
+    <div id="page-historial" class="page"><button onclick="exportarCSV()" style="background:#a855f7;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px;width:100%">⬇️ Exportar historial CSV</button></div>
     <div id="page-perfil" class="page"></div>
   </div>
   <div class="bottom-nav">
@@ -616,11 +617,25 @@ const FB={
   messagingSenderId:"72976839510",
   appId:"1:72976839510:web:1c08a90e3730748e03dcf7"
 };
-const ADMIN_PIN="1990";
+const ADMIN_PIN="2580";
 
 const fbApp=initializeApp(FB);
 const auth=getAuth(fbApp);
 const db=getFirestore(fbApp);
+
+// LOG DE ERRORES — P5 ROBUSTEZ
+async function logError(origen, mensaje, extra) {
+  try {
+    const u = auth.currentUser ? auth.currentUser.uid : 'anonimo';
+    await addDoc(collection(db,'errores'), {
+      app: 'SaludAR', origen,
+      mensaje: String(mensaje),
+      extra: extra ? String(extra) : null,
+      uid: u,
+      ts: serverTimestamp()
+    });
+  } catch(_) {}
+}
 
 function sanitizeHTML(str){const d=document.createElement('div');d.textContent=str??"";return d.innerHTML;}
 
@@ -1888,6 +1903,40 @@ document.getElementById("btn-google").addEventListener("click",async()=>{
   }
   btn.disabled=false;
 });
+
+// EXPORTAR CSV — P2 ROBUSTEZ
+async function exportarCSV() {
+  try {
+    const pid = perfilActivoId;
+    if (!pid) { showToast('Seleccioná un perfil primero','warn'); return; }
+
+    // Medicamentos
+    const medSnap = await getDocs(query(collection(db,'perfiles',pid,'medicamentos'), orderBy('nombre','asc')));
+    const rows = [['Tipo','Nombre','Dosis','Frecuencia','Horarios','Notas','Fecha']];
+    medSnap.forEach(d => {
+      const v = d.data();
+      rows.push(['Medicamento', (v.nombre||'').replace(/"/g,"'"), v.dosis||'',
+        v.frecuencia||'', (v.horarios||[]).join(' / '), (v.notas||'').replace(/"/g,"'"),
+        v.fecha ? new Date(v.fecha.seconds*1000).toLocaleDateString('es-AR') : '']);
+    });
+
+    // Historial
+    const hSnap = await getDocs(query(collection(db,'perfiles',pid,'historial'), orderBy('fecha','desc')));
+    hSnap.forEach(d => {
+      const v = d.data();
+      rows.push([v.tipo||'Historial', (v.titulo||'').replace(/"/g,"'"), '', '',
+        '', (v.detalle||'').replace(/"/g,"'"),
+        v.fecha ? new Date(v.fecha.seconds*1000).toLocaleDateString('es-AR') : '']);
+    });
+
+    const csv = rows.map(r => r.map(x => `"${x}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'saludar-perfil-' + new Date().toISOString().split('T')[0] + '.csv';
+    a.click();
+    showToast('CSV exportado');
+  } catch(e) { logError('exportCSV', e); }
+}
 </script>
 
 <!--
