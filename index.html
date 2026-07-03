@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SaludAR v2.5 — 2026-07-02 — P1+P2+P3+P5 ROBUSTEZ + notif locales SW -->
+<!-- SaludAR v2.6 — 2026-07-02 — P1+P2+P3+P5 ROBUSTEZ + notif locales SW -->
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
@@ -841,18 +841,48 @@ let swNotifReg = null;
 
 async function activarNotificaciones(){
   if(!perfilActivo){toast("Elegí un perfil primero","err");return;}
+
+  // Paso 1: verificar soporte
+  if(!("Notification" in window)){
+    toast("Este navegador no soporta notificaciones","err"); return;
+  }
+  if(!("serviceWorker" in navigator)){
+    toast("SW no disponible en este navegador","err"); return;
+  }
+
+  // Paso 2: registrar SW primero (antes de pedir permiso)
   try{
-    if(!("Notification" in window)){toast("Este navegador no soporta notificaciones","err");return;}
-    const permiso = await Notification.requestPermission();
-    if(permiso !== "granted"){toast("Necesitamos tu permiso para avisarte","err");return;}
-    if(!("serviceWorker" in navigator)){toast("SW no disponible","err");return;}
     swNotifReg = await navigator.serviceWorker.register("/saludar/sw-saludar-notif.js");
+    await navigator.serviceWorker.ready;
+  }catch(e){
+    logError("sw-register",e);
+    toast("Error al inicializar: " + e.message,"err"); return;
+  }
+
+  // Paso 3: pedir permiso de notificaciones
+  let permiso;
+  try{
+    permiso = await Notification.requestPermission();
+  }catch(e){
+    // Fallback para navegadores que usan callback en vez de promise
+    permiso = await new Promise(resolve => Notification.requestPermission(resolve));
+  }
+
+  if(permiso !== "granted"){
+    toast("Permiso denegado — activalo en Configuración del navegador","err"); return;
+  }
+
+  // Paso 4: guardar estado y enviar datos al SW
+  try{
     await updateDoc(doc(db,"perfiles",perfilActivo.id),{notifActivas:true});
     perfilActivo.notifActivas = true;
-    enviarRecordatoriosAlSW();
+    await enviarRecordatoriosAlSW();
     toast("Notificaciones activadas ✅","ok");
-    if(currentPage==="perfil")renderPerfil();
-  }catch(e){logError("activarNotificaciones",e);toast("Error al activar notificaciones","err");}
+    if(currentPage==="perfil") renderPerfil();
+  }catch(e){
+    logError("activarNotificaciones",e);
+    toast("Error al guardar configuración","err");
+  }
 }
 
 // Sincronizar medicamentos + turnos + tomas al SW
