@@ -338,6 +338,90 @@ body.role-veedor .check-item{pointer-events:none;opacity:.5}
 .btn-del-horario{width:38px;height:38px;flex-shrink:0;background:var(--red-bg);border:1.5px solid #fecaca;border-radius:var(--radius-sm);color:var(--red);font-size:16px;cursor:pointer}
 .med-item.vencido{border-color:#fca5a5;background:var(--red-bg)}
 .med-item.vencido .med-horario-chip{background:var(--red);color:#fff}
+
+/* ── PULIDO VISUAL RAVENTECHS ──────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@700;800&display=swap');
+
+body, input, button, select, textarea {
+  font-family: 'Inter', sans-serif !important;
+}
+.logo-text, .app-title, h1 {
+  font-family: 'Sora', sans-serif !important;
+}
+.producto-card, .product-card, [class*="prod-card"], [class*="item-card"] {
+  border-radius: 16px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,.13), 0 1px 4px rgba(0,0,0,.06) !important;
+  transition: transform .15s ease, box-shadow .15s ease !important;
+  cursor: pointer;
+}
+.producto-card:active, .product-card:active,
+[class*="prod-card"]:active, [class*="item-card"]:active {
+  transform: scale(0.95) !important;
+  box-shadow: 0 1px 6px rgba(0,0,0,.06) !important;
+}
+.btn-tomate, .btn-primary, [class*="btn-rojo"], [class*="btn-cobrar"] {
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #c0392b, #e74c3c) !important;
+  box-shadow: 0 5px 18px rgba(192,57,43,.45), 0 2px 6px rgba(192,57,43,.2) !important;
+  transition: transform .12s ease, box-shadow .12s ease !important;
+  font-weight: 700 !important;
+  letter-spacing: .01em !important;
+}
+.btn-tomate:active, .btn-primary:active {
+  transform: scale(0.97) !important;
+  box-shadow: 0 1px 6px rgba(192,57,43,.25) !important;
+}
+.btn-secondary, .btn-naranja {
+  border-radius: 14px !important;
+  transition: transform .12s ease, box-shadow .12s ease !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 14px rgba(230,126,34,.35), 0 1px 4px rgba(230,126,34,.15) !important;
+}
+.btn-secondary:active, .btn-naranja:active {
+  transform: scale(0.97) !important;
+  box-shadow: 0 2px 6px rgba(230,126,34,.2) !important;
+}
+#cobrarBtn, [id*="cobrar"], [id*="Cobrar"] {
+  min-height: 54px !important;
+  font-size: 1rem !important;
+  border-radius: 16px !important;
+}
+#totalDisplay, [id*="total"], .total-amount {
+  font-size: 1.6rem !important;
+  font-weight: 800 !important;
+  font-family: 'Sora', sans-serif !important;
+}
+.tab-btn, [class*="tab-btn"] {
+  transition: color .2s ease !important;
+  font-weight: 500 !important;
+}
+header, .app-header, [class*="header"] {
+  box-shadow: 0 1px 8px rgba(0,0,0,.06) !important;
+}
+input, select, textarea {
+  border-radius: 10px !important;
+}
+.toast, [class*="toast"], [id*="toast"] {
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,.15) !important;
+}
+.btn-metodo, [id*="metodo"], [id*="efectivo"], [id*="debito"],
+button[class*="metodo"], button[class*="pago"] {
+  border-radius: 14px !important;
+  font-weight: 600 !important;
+  transition: transform .12s ease, box-shadow .12s ease !important;
+  box-shadow: 0 3px 10px rgba(0,0,0,.1) !important;
+}
+button[class*="metodo"]:active, button[class*="pago"]:active {
+  transform: scale(0.97) !important;
+}
+[class*="venta-actual"], [class*="total-section"], [id*="ventaActual"] {
+  border-radius: 16px !important;
+  box-shadow: 0 2px 16px rgba(0,0,0,.07) !important;
+}
+/* ──────────────────────────────────────────────────── */
+
 </style>
 </head>
 <body>
