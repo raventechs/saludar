@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SaludAR v2.6 — 2026-07-02 — P1+P2+P3+P5 ROBUSTEZ + notif locales SW -->
+<!-- SaludAR v2.7 — 2026-08-01 — Seguridad: sanitizeHTML() completada (medicación, estudios, turnos, médicos, admin), App Check SDK preparado -->
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
@@ -690,6 +690,7 @@ button[class*="metodo"]:active, button[class*="pago"]:active {
 
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{initializeAppCheck,ReCaptchaV3Provider}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check.js";
 import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut,GoogleAuthProvider,signInWithPopup}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import{getFirestore,collection,collectionGroup,doc,setDoc,addDoc,getDocs,getDoc,updateDoc,deleteDoc,query,where,orderBy,serverTimestamp,Timestamp,arrayUnion,increment}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 // firebase-messaging reemplazado por SW local (v2.2)
@@ -705,6 +706,10 @@ const FB={
 const ADMIN_PIN="2580";
 
 const fbApp=initializeApp(FB);
+const APPCHECK_KEY="";
+if(APPCHECK_KEY){
+  initializeAppCheck(fbApp,{provider:new ReCaptchaV3Provider(APPCHECK_KEY),isTokenAutoRefreshEnabled:true});
+}
 const auth=getAuth(fbApp);
 const db=getFirestore(fbApp);
 
@@ -1098,8 +1103,8 @@ async function loadAdminUsers(){
           <button class="btn-afam-on" data-uid="${d.id}">👨‍👩‍👧 Habilitar Familiar</button>
         </div>`;
     return`<div class="admin-card">
-      <div class="admin-card-title">${u.nombre||u.email}${ban?'<span class="ban-badge">BANEADO</span>':""} ${demoBadge}</div>
-      <div class="admin-card-sub">${u.email} · Plan ${u.plan||"individual"} · ${u.esFamiliar?"Familiar vinculado":"Titular"} · ${u.familiarHabilitado?`Familiar habilitado (cupo ${u.limiteMiembros||3})`:"Familiar no habilitado"}</div>
+      <div class="admin-card-title">${sanitizeHTML(u.nombre||u.email)}${ban?'<span class="ban-badge">BANEADO</span>':""} ${demoBadge}</div>
+      <div class="admin-card-sub">${sanitizeHTML(u.email)} · Plan ${sanitizeHTML(u.plan||"individual")} · ${u.esFamiliar?"Familiar vinculado":"Titular"} · ${u.familiarHabilitado?`Familiar habilitado (cupo ${u.limiteMiembros||3})`:"Familiar no habilitado"}</div>
       ${demoInfo}
       <div class="admin-card-actions" style="margin-top:8px">
         ${ban?`<button class="btn-aunban" data-uid="${d.id}">✅ Desbanear</button>`:`<button class="btn-aban" data-uid="${d.id}">🚫 Banear</button>`}
@@ -1588,12 +1593,12 @@ function renderMedicacion(){
     const hs=(m.horarios||"").split(",").map(h=>h.trim()).filter(Boolean);
     return`<div class="med-card-list">
       <div class="med-card-header">
-        <div class="med-card-nombre">💊 ${m.nombre}</div>
+        <div class="med-card-nombre">💊 ${sanitizeHTML(m.nombre)}</div>
         <div style="display:flex;gap:6px">${btnAcciones("medicamentos",m.id)}</div>
       </div>
-      <div class="med-card-sub">${m.dosis||""}${m.indicaciones?" · "+m.indicaciones:""}</div>
+      <div class="med-card-sub">${sanitizeHTML(m.dosis||"")}${m.indicaciones?" · "+sanitizeHTML(m.indicaciones):""}</div>
       <div class="med-card-sub" style="margin-top:2px">📅 ${m.frecuencia==="todos"||!m.frecuencia?"Todos los días":m.frecuencia==="laboral"?"Días hábiles":m.frecuencia==="semana"?"Lun / Mié / Vie":"Fines de semana"}</div>
-      <div class="med-card-horarios">${hs.length>0?hs.map(h=>`<span class="med-h-chip">🕐 ${h}</span>`).join(""):"<span class='med-h-chip'>Sin horario</span>"}</div>
+      <div class="med-card-horarios">${hs.length>0?hs.map(h=>`<span class="med-h-chip">🕐 ${sanitizeHTML(h)}</span>`).join(""):"<span class='med-h-chip'>Sin horario</span>"}</div>
     </div>`;
   }).join("")}`;
   el.querySelector("#btn-add-med")?.addEventListener("click",()=>abrirModalMedNuevo());
@@ -1606,8 +1611,8 @@ function renderEstudios(){
   estudios.map(e=>`<div class="list-item">
     <div class="list-item-icon" style="background:#dbeafe">🧪</div>
     <div class="list-item-info">
-      <div class="list-item-title">${e.tipo}</div>
-      <div class="list-item-sub">${e.laboratorio||"—"}${e.medico?" · "+e.medico:""}</div>
+      <div class="list-item-title">${sanitizeHTML(e.tipo)}</div>
+      <div class="list-item-sub">${sanitizeHTML(e.laboratorio||"—")}${e.medico?" · "+sanitizeHTML(e.medico):""}</div>
       ${e.observaciones?`<div style="font-size:12px;color:var(--muted);margin-top:4px">${sanitizeHTML(e.observaciones)}</div>`:""}
       ${e.foto?`<div style="margin-top:8px"><img src="${e.foto}" style="max-width:100%;max-height:180px;border-radius:8px;object-fit:contain;cursor:pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'180px':'none'" title="Tocá para ampliar"/></div>`:""}
       <div style="display:flex;gap:6px;margin-top:8px">${btnAcciones("estudios",e.id)}</div>
@@ -1626,10 +1631,10 @@ function renderTurnos(){
     return`<div class="turno-item">
       <div class="turno-fecha-box"><div class="turno-dia-num">${t.fecha.split("-")[2]}</div><div class="turno-mes">${MESES[parseInt(t.fecha.split("-")[1])-1]}</div></div>
       <div class="turno-info">
-        <div class="turno-especialidad">${t.especialidad}</div>
-        <div class="turno-medico">${t.medico||"—"}</div>
-        <div class="turno-hora">🕐 ${t.hora||"—"}${t.lugar?" · "+t.lugar:""}</div>
-        ${t.notas?`<div style="font-size:11px;color:var(--muted);margin-top:4px">📝 ${t.notas}</div>`:""}
+        <div class="turno-especialidad">${sanitizeHTML(t.especialidad)}</div>
+        <div class="turno-medico">${sanitizeHTML(t.medico||"—")}</div>
+        <div class="turno-hora">🕐 ${t.hora||"—"}${t.lugar?" · "+sanitizeHTML(t.lugar):""}</div>
+        ${t.notas?`<div style="font-size:11px;color:var(--muted);margin-top:4px">📝 ${sanitizeHTML(t.notas)}</div>`:""}
         <div style="display:flex;gap:6px;margin-top:8px">${btnAcciones("turnos",t.id)}</div>
       </div>
       <span class="badge ${dr===0?"badge-warn":futuro?"badge-blue":"badge-green"}">${dr===0?"Hoy":futuro?"En "+dr+"d":"Realizado"}</span>
@@ -1648,12 +1653,12 @@ function renderDirectorio(){
   ${medicos.length===0?emptyHTML("👨‍⚕️","Sin médicos","Cargá tus especialistas de confianza"):
   medicos.map(m=>`<div class="medico-card">
     <div class="medico-header"><div class="medico-avatar">${m.nombre.substring(0,2).toUpperCase()}</div>
-    <div><div class="medico-nombre">${m.nombre}</div><div class="medico-esp">${m.especialidad}</div></div></div>
+    <div><div class="medico-nombre">${sanitizeHTML(m.nombre)}</div><div class="medico-esp">${sanitizeHTML(m.especialidad)}</div></div></div>
     <div class="medico-datos">
-      ${m.telefono?`<div class="medico-dato">📞 ${m.telefono}</div>`:""}
-      ${m.obraSocial?`<div class="medico-dato">🏥 ${m.obraSocial}</div>`:""}
-      ${m.direccion?`<div class="medico-dato">📍 ${m.direccion}</div>`:""}
-      ${m.notas?`<div class="medico-dato">📝 ${m.notas}</div>`:""}
+      ${m.telefono?`<div class="medico-dato">📞 ${sanitizeHTML(m.telefono)}</div>`:""}
+      ${m.obraSocial?`<div class="medico-dato">🏥 ${sanitizeHTML(m.obraSocial)}</div>`:""}
+      ${m.direccion?`<div class="medico-dato">📍 ${sanitizeHTML(m.direccion)}</div>`:""}
+      ${m.notas?`<div class="medico-dato">📝 ${sanitizeHTML(m.notas)}</div>`:""}
     </div>
     <div style="display:flex;gap:6px;margin-top:10px">${btnAcciones("medicos",m.id)}</div>
   </div>`).join("")}`;
@@ -1699,7 +1704,7 @@ function renderPerfil(){
     <div class="card">
       <div class="perfil-header">
         <div class="perfil-avatar">${(p.nombre||"?").substring(0,2).toUpperCase()}</div>
-        <div><div class="perfil-nombre">${p.nombre}</div><div class="perfil-plan">Plan ${esFamiliarPlan?"Familiar 👨‍👩‍👧":"Individual 👤"} · ${esFamiliar?"Familiar vinculado":"Titular"}</div></div>
+        <div><div class="perfil-nombre">${sanitizeHTML(p.nombre)}</div><div class="perfil-plan">Plan ${esFamiliarPlan?"Familiar 👨‍👩‍👧":"Individual 👤"} · ${esFamiliar?"Familiar vinculado":"Titular"}</div></div>
       </div>
       <div class="perfil-dato-row"><span class="perfil-dato-label">Fecha de nacimiento</span><span class="perfil-dato-val">${fmtFecha(p.fechaNac)||"—"}</span></div>
       <div class="perfil-dato-row"><span class="perfil-dato-label">Grupo sanguíneo</span><span class="perfil-dato-val">${sanitizeHTML(p.grupoSanguineo||"—")}</span></div>
@@ -1927,7 +1932,7 @@ function syncHorariosHidden(){
 function agregarFilaHorario(valor=""){
   const row=document.createElement("div");
   row.className="horario-row";
-  row.innerHTML=`<input type="time" value="${valor}"/><button type="button" class="btn-del-horario">✕</button>`;
+  row.innerHTML=`<input type="time" value="${sanitizeHTML(valor)}"/><button type="button" class="btn-del-horario">✕</button>`;
   row.querySelector("input").addEventListener("change",syncHorariosHidden);
   row.querySelector(".btn-del-horario").addEventListener("click",()=>{
     const rows=document.getElementById("med-horarios-rows");
