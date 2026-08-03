@@ -973,7 +973,7 @@ async function activarNotificaciones(){
 
   // Paso 2: registrar SW primero (antes de pedir permiso)
   try{
-    swNotifReg = await navigator.serviceWorker.register("/sw.js");
+    swNotifReg = await navigator.serviceWorker.register("/sw-saludar-notif.js");
     await navigator.serviceWorker.ready;
   }catch(e){
     logError("sw-register",e);
@@ -1018,7 +1018,7 @@ async function activarNotificaciones(){
 async function enviarRecordatoriosAlSW(){
   if(!perfilActivo) return;
   try{
-    const sw = swNotifReg || await navigator.serviceWorker.getRegistration("/sw.js");
+    const sw = swNotifReg || await navigator.serviceWorker.getRegistration("/sw-saludar-notif.js");
     if(!sw?.active) return;
     sw.active.postMessage({
       type: "SET_RECORDATORIOS",
@@ -1038,7 +1038,7 @@ async function enviarRecordatoriosAlSW(){
 
 // Llamar a enviarRecordatoriosAlSW cada vez que el usuario marca una toma
 function sincronizarTomasAlSW(){
-  navigator.serviceWorker.getRegistration("/sw.js").then(sw => {
+  navigator.serviceWorker.getRegistration("/sw-saludar-notif.js").then(sw => {
     if(sw?.active) sw.active.postMessage({ type: "SET_TOMAS_HOY", tomasHoy });
   }).catch(()=>{});
 }
@@ -1050,7 +1050,7 @@ function resetNotifAMedianoche(){
   mañana.setDate(ahora.getDate()+1);
   mañana.setHours(0,1,0,0);
   setTimeout(async ()=>{
-    const sw = await navigator.serviceWorker.getRegistration("/sw.js");
+    const sw = await navigator.serviceWorker.getRegistration("/sw-saludar-notif.js");
     sw?.active?.postMessage({type:"RESET_NOTIFICADOS"});
     resetNotifAMedianoche();
   }, mañana - ahora);
@@ -1210,7 +1210,7 @@ document.getElementById("atab-perfiles").addEventListener("click",()=>{
   document.getElementById("atab-perfiles").classList.add("active");document.getElementById("atab-users").classList.remove("active");
   loadAdminPerfiles();
 });
-document.getElementById("btn-admin-exit").addEventListener("click",()=>{if(me)showScreen("screen-app"); if(window.__rtMostrarPermisos) __rtMostrarPermisos();;else showScreen("screen-login");});
+document.getElementById("btn-admin-exit").addEventListener("click",()=>{if(me)showScreen("screen-app");;else showScreen("screen-login");});
 
 // ── DEMO HELPERS ──────────────────────────────────────────
 const DEMO_MS=24*60*60*1000; // 24 horas en ms
@@ -2168,7 +2168,7 @@ async function toggleNotifPorToma(val){
     await updateDoc(doc(db,"perfiles",perfilActivo.id),{"features.notifPorToma": val});
     if(!perfilActivo.features) perfilActivo.features = {};
     perfilActivo.features.notifPorToma = val;
-    const sw = await navigator.serviceWorker.getRegistration("/sw.js");
+    const sw = await navigator.serviceWorker.getRegistration("/sw-saludar-notif.js");
     if(sw?.active) sw.active.postMessage({ type: "SET_CONFIG", notifPorToma: val });
     toast(val ? "Recordatorio por toma activado ✅" : "Recordatorio por toma desactivado","ok");
   } catch(e){ logError("toggleNotifPorToma",e); toast("Error al guardar","err"); }
@@ -2337,6 +2337,22 @@ NOTA PARA RUBÉN:
   if (btnOmitir) btnOmitir.addEventListener('click', cerrarPermisos);
   // Exponer para que el auth la llame
   window.__rtMostrarPermisos = mostrarPermisos;
+})();
+</script>
+<script>
+(function() {
+  var obs = new MutationObserver(function() {
+    var s = document.getElementById('screen-app');
+    if (s && s.classList.contains('active')) {
+      if (window.__rtMostrarPermisos && !localStorage.getItem('rt_permisos_ok')) {
+        window.__rtMostrarPermisos();
+      }
+      obs.disconnect();
+    }
+  });
+  document.addEventListener('DOMContentLoaded', function() {
+    obs.observe(document.body, {attributes:true, subtree:true, attributeFilter:['class']});
+  });
 })();
 </script>
 </body>
