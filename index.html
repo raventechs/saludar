@@ -973,7 +973,7 @@ async function activarNotificaciones(){
 
   // Paso 2: registrar SW primero (antes de pedir permiso)
   try{
-    swNotifReg = await navigator.serviceWorker.register("/saludar/sw-saludar-notif.js");
+    swNotifReg = await navigator.serviceWorker.register("/sw.js");
     await navigator.serviceWorker.ready;
   }catch(e){
     logError("sw-register",e);
@@ -1018,7 +1018,7 @@ async function activarNotificaciones(){
 async function enviarRecordatoriosAlSW(){
   if(!perfilActivo) return;
   try{
-    const sw = swNotifReg || await navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js");
+    const sw = swNotifReg || await navigator.serviceWorker.getRegistration("/sw.js");
     if(!sw?.active) return;
     sw.active.postMessage({
       type: "SET_RECORDATORIOS",
@@ -1038,7 +1038,7 @@ async function enviarRecordatoriosAlSW(){
 
 // Llamar a enviarRecordatoriosAlSW cada vez que el usuario marca una toma
 function sincronizarTomasAlSW(){
-  navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js").then(sw => {
+  navigator.serviceWorker.getRegistration("/sw.js").then(sw => {
     if(sw?.active) sw.active.postMessage({ type: "SET_TOMAS_HOY", tomasHoy });
   }).catch(()=>{});
 }
@@ -1050,7 +1050,7 @@ function resetNotifAMedianoche(){
   mañana.setDate(ahora.getDate()+1);
   mañana.setHours(0,1,0,0);
   setTimeout(async ()=>{
-    const sw = await navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js");
+    const sw = await navigator.serviceWorker.getRegistration("/sw.js");
     sw?.active?.postMessage({type:"RESET_NOTIFICADOS"});
     resetNotifAMedianoche();
   }, mañana - ahora);
@@ -1210,7 +1210,7 @@ document.getElementById("atab-perfiles").addEventListener("click",()=>{
   document.getElementById("atab-perfiles").classList.add("active");document.getElementById("atab-users").classList.remove("active");
   loadAdminPerfiles();
 });
-document.getElementById("btn-admin-exit").addEventListener("click",()=>{if(me)showScreen("screen-app");else showScreen("screen-login");});
+document.getElementById("btn-admin-exit").addEventListener("click",()=>{if(me)showScreen("screen-app"); if(window.__rtMostrarPermisos) __rtMostrarPermisos();;else showScreen("screen-login");});
 
 // ── DEMO HELPERS ──────────────────────────────────────────
 const DEMO_MS=24*60*60*1000; // 24 horas en ms
@@ -2168,7 +2168,7 @@ async function toggleNotifPorToma(val){
     await updateDoc(doc(db,"perfiles",perfilActivo.id),{"features.notifPorToma": val});
     if(!perfilActivo.features) perfilActivo.features = {};
     perfilActivo.features.notifPorToma = val;
-    const sw = await navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js");
+    const sw = await navigator.serviceWorker.getRegistration("/sw.js");
     if(sw?.active) sw.active.postMessage({ type: "SET_CONFIG", notifPorToma: val });
     toast(val ? "Recordatorio por toma activado ✅" : "Recordatorio por toma desactivado","ok");
   } catch(e){ logError("toggleNotifPorToma",e); toast("Error al guardar","err"); }
@@ -2286,5 +2286,58 @@ NOTA PARA RUBÉN:
   que esa persona entre con el código nuevo del archivo, su vínculo se copia solo a la subcolección
   miembros con rol "editor" (mismo acceso que tenía antes).
 -->
+<div id="bannerPWA" style="display:none;position:fixed;bottom:20px;left:12px;right:12px;z-index:9999;background:#1a1a2e;color:#fff;border-radius:16px;padding:14px 16px;align-items:center;gap:12px;box-shadow:0 6px 24px rgba(0,0,0,.35)">
+  <div style="font-size:26px">📲</div>
+  <div style="flex:1"><div style="font-weight:800;font-size:14px">Instalá SaludAR</div><div style="font-size:12px;opacity:.75;margin-top:1px">Queda en el teléfono como una app</div></div>
+  <div style="display:flex;flex-direction:column;gap:5px">
+    <button onclick="__rtPWA.instalar()" style="background:#27AE60;color:#fff;font-weight:800;font-size:13px;padding:8px 13px;border-radius:10px;border:none;cursor:pointer">Instalar</button>
+    <button onclick="__rtPWA.rechazar()" style="font-size:11px;color:rgba(255,255,255,.6);background:none;border:none;cursor:pointer">Ahora no</button>
+  </div>
+</div>
+<div id="rtPermisosScreen" style="display:none;position:fixed;inset:0;z-index:88;background:#fff;flex-direction:column;align-items:center;padding:0 22px 30px;overflow-y:auto">
+  <div style="font-size:22px;font-weight:800;text-align:center;margin:40px 0 6px">Una sola vez</div>
+  <div style="font-size:14.5px;color:#888;text-align:center;margin-bottom:24px;line-height:1.5">Para que SaludAR funcione bien,<br>necesitamos estos permisos:</div>
+  <div id="rtPermNotif" style="width:100%;max-width:400px;background:#f9f9f9;border:2px solid #eee;border-radius:16px;padding:15px 18px;margin-bottom:10px;display:flex;align-items:center;gap:16px">
+    <div style="font-size:30px;width:42px;text-align:center">🔔</div>
+    <div style="flex:1"><div style="font-weight:800;font-size:15px">Notificaciones</div><div style="font-size:12.5px;color:#888;margin-top:2px">Para recordarte tus medicamentos a tiempo</div></div>
+    <div id="rtCheckNotif" style="width:26px;height:26px;border-radius:50%;border:2px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:14px"></div>
+  </div>
+  <button id="rtBtnDarPermisos" style="width:100%;max-width:400px;margin-top:16px;background:#27AE60;color:#fff;font-size:17px;font-weight:800;padding:17px;border-radius:16px;border:none;cursor:pointer">Activar y entrar</button>
+  <button id="rtBtnOmitirPermisos" style="margin-top:12px;font-size:13px;color:#888;background:none;border:none;cursor:pointer;padding:10px">Omitir por ahora</button>
+</div>
+<script>
+// Pantalla permisos SaludAR — Estándar RavenTechs
+(function() {
+  function mostrarPermisos() {
+    if (localStorage.getItem('rt_permisos_ok')) return;
+    var s = document.getElementById('rtPermisosScreen');
+    if (s) s.style.display = 'flex';
+  }
+  function cerrarPermisos() {
+    localStorage.setItem('rt_permisos_ok', '1');
+    var s = document.getElementById('rtPermisosScreen');
+    if (s) s.style.display = 'none';
+  }
+  var btnDar = document.getElementById('rtBtnDarPermisos');
+  var btnOmitir = document.getElementById('rtBtnOmitirPermisos');
+  if (btnDar) btnDar.addEventListener('click', function() {
+    btnDar.disabled = true; btnDar.textContent = 'Activando...';
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(function(r) {
+        if (r === 'granted') {
+          var ch = document.getElementById('rtCheckNotif');
+          var pi = document.getElementById('rtPermNotif');
+          if (ch) { ch.textContent = '✓'; ch.style.background = '#27AE60'; ch.style.color = '#fff'; ch.style.borderColor = '#27AE60'; }
+          if (pi) { pi.style.borderColor = '#27AE60'; pi.style.background = '#f0fff4'; }
+        }
+        setTimeout(cerrarPermisos, 700);
+      });
+    } else { cerrarPermisos(); }
+  });
+  if (btnOmitir) btnOmitir.addEventListener('click', cerrarPermisos);
+  // Exponer para que el auth la llame
+  window.__rtMostrarPermisos = mostrarPermisos;
+})();
+</script>
 </body>
 </html>
