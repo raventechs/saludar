@@ -5,7 +5,12 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="description" content="Gestión de medicación, turnos y salud familiar.">
+<meta name="theme-color" content="#0f1e3d">
+<link rel="manifest" href="/saludar/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SaludAR">
 <title>SaludAR</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
@@ -932,7 +937,7 @@ async function activarNotificaciones(){
 
   // Paso 2: registrar SW primero (antes de pedir permiso)
   try{
-    swNotifReg = await navigator.serviceWorker.register("/sw-saludar-notif.js");
+    swNotifReg = await navigator.serviceWorker.register("/saludar/sw-saludar-notif.js");
     await navigator.serviceWorker.ready;
   }catch(e){
     logError("sw-register",e);
@@ -977,7 +982,7 @@ async function activarNotificaciones(){
 async function enviarRecordatoriosAlSW(){
   if(!perfilActivo) return;
   try{
-    const sw = swNotifReg || await navigator.serviceWorker.getRegistration("/sw-saludar-notif.js");
+    const sw = swNotifReg || await navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js");
     if(!sw?.active) return;
     sw.active.postMessage({
       type: "SET_RECORDATORIOS",
@@ -997,7 +1002,7 @@ async function enviarRecordatoriosAlSW(){
 
 // Llamar a enviarRecordatoriosAlSW cada vez que el usuario marca una toma
 function sincronizarTomasAlSW(){
-  navigator.serviceWorker.getRegistration("/sw-saludar-notif.js").then(sw => {
+  navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js").then(sw => {
     if(sw?.active) sw.active.postMessage({ type: "SET_TOMAS_HOY", tomasHoy });
   }).catch(()=>{});
 }
@@ -1009,7 +1014,7 @@ function resetNotifAMedianoche(){
   mañana.setDate(ahora.getDate()+1);
   mañana.setHours(0,1,0,0);
   setTimeout(async ()=>{
-    const sw = await navigator.serviceWorker.getRegistration("/sw-saludar-notif.js");
+    const sw = await navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js");
     sw?.active?.postMessage({type:"RESET_NOTIFICADOS"});
     resetNotifAMedianoche();
   }, mañana - ahora);
@@ -1169,7 +1174,7 @@ document.getElementById("atab-perfiles").addEventListener("click",()=>{
   document.getElementById("atab-perfiles").classList.add("active");document.getElementById("atab-users").classList.remove("active");
   loadAdminPerfiles();
 });
-document.getElementById("btn-admin-exit").addEventListener("click",()=>{if(me)showScreen("screen-app");;else showScreen("screen-login");});
+document.getElementById("btn-admin-exit").addEventListener("click",()=>{if(me)showScreen("screen-app");else showScreen("screen-login");});
 
 // ── DEMO HELPERS ──────────────────────────────────────────
 const DEMO_MS=24*60*60*1000; // 24 horas en ms
@@ -2127,7 +2132,7 @@ async function toggleNotifPorToma(val){
     await updateDoc(doc(db,"perfiles",perfilActivo.id),{"features.notifPorToma": val});
     if(!perfilActivo.features) perfilActivo.features = {};
     perfilActivo.features.notifPorToma = val;
-    const sw = await navigator.serviceWorker.getRegistration("/sw-saludar-notif.js");
+    const sw = await navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js");
     if(sw?.active) sw.active.postMessage({ type: "SET_CONFIG", notifPorToma: val });
     toast(val ? "Recordatorio por toma activado ✅" : "Recordatorio por toma desactivado","ok");
   } catch(e){ logError("toggleNotifPorToma",e); toast("Error al guardar","err"); }
@@ -2244,11 +2249,6 @@ NOTA PARA RUBÉN:
 - La migración del familiar viejo (vinculado por código manual) es automática: la primera vez
   que esa persona entre con el código nuevo del archivo, su vínculo se copia solo a la subcolección
   miembros con rol "editor" (mismo acceso que tenía antes).
--->  <div style="flex:1"><div style="font-weight:800;font-size:14px">Instalá SaludAR</div><div style="font-size:12px;opacity:.75;margin-top:1px">Queda en el teléfono como una app</div></div>
-  <div style="display:flex;flex-direction:column;gap:5px">
-    <button onclick="__rtPWA.instalar()" style="background:#27AE60;color:#fff;font-weight:800;font-size:13px;padding:8px 13px;border-radius:10px;border:none;cursor:pointer">Instalar</button>
-    <button onclick="__rtPWA.rechazar()" style="font-size:11px;color:rgba(255,255,255,.6);background:none;border:none;cursor:pointer">Ahora no</button>
-  </div>
-</div>
+-->
 </body>
 </html>
