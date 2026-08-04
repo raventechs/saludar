@@ -6,10 +6,10 @@
 //   - 22:00: resumen de todas las tomas pendientes del día
 //   - Turnos/Estudios: día anterior a la misma hora + día del evento a las 08:00
 
-const CACHE_NAME = 'saludar-v2.3';
+const CACHE_NAME = 'saludar-v2.4';
 const SHELL = [
-  '/saludar/',
-  '/saludar/index.html',
+  '/',
+  '/index.html',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js',
@@ -48,7 +48,7 @@ self.addEventListener('fetch', e => {
         }
         return res;
       }).catch(() => {
-        if (e.request.mode === 'navigate') return caches.match('/saludar/index.html');
+        if (e.request.mode === 'navigate') return caches.match('/index.html');
       });
     })
   );
@@ -101,7 +101,7 @@ function notificar(tag, titulo, cuerpo, opciones = {}) {
     icon:  '/saludar/icon-192.png',
     badge: '/saludar/icon-192.png',
     tag,
-    data:  { url: '/saludar/' },
+    data:  { url: '/' },
     requireInteraction: true,
     vibrate: [200, 100, 200],
     ...opciones
@@ -213,8 +213,8 @@ self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
-      const url = e.notification.data?.url || '/saludar/';
-      const existing = cs.find(c => c.url.includes('/saludar/'));
+      const url = e.notification.data?.url || '/';
+      const existing = cs.find(c => c.url.includes('/'));
       if (existing) return existing.focus();
       return clients.openWindow(url);
     })
