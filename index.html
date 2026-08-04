@@ -423,6 +423,54 @@ button[class*="metodo"]:active, button[class*="pago"]:active {
 /* ──────────────────────────────────────────────────── */
 
 </style>
+<script>
+var __rtPWA=(function(){
+  var d=null;
+  window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault();d=e;
+    if(!localStorage.getItem('pwa_installed')&&!localStorage.getItem('pwa_rechazado'))
+      setTimeout(function(){var b=document.getElementById('bannerPWA');if(b)b.style.display='flex';},2000);
+  });
+  window.addEventListener('appinstalled',function(){
+    localStorage.setItem('pwa_installed','1');
+    var b=document.getElementById('bannerPWA');if(b)b.style.display='none';
+  });
+  function mostrarPermisos(){
+    if(localStorage.getItem('rt_perm_ok'))return;
+    if(!('Notification' in window))return;
+    if(Notification.permission!=='default')return;
+    var s=document.getElementById('rtPermisos');
+    if(s)s.style.display='flex';
+  }
+  document.addEventListener('DOMContentLoaded',function(){
+    var btn=document.getElementById('rtBtnActivar');
+    if(btn)btn.addEventListener('click',function(){
+      Notification.requestPermission().then(function(){
+        localStorage.setItem('rt_perm_ok','1');
+        var s=document.getElementById('rtPermisos');
+        if(s)s.style.display='none';
+      });
+    });
+  });
+  return{
+    instalar:function(){
+      if(!d)return;
+      var b=document.getElementById('bannerPWA');
+      if(b)b.style.display='none';
+      d.prompt();d.userChoice.then(function(c){
+        if(c.outcome==='accepted')localStorage.setItem('pwa_installed','1');
+        d=null;
+      });
+    },
+    rechazar:function(){
+      var b=document.getElementById('bannerPWA');
+      if(b)b.style.display='none';
+      localStorage.setItem('pwa_rechazado','1');
+    },
+    permisos:mostrarPermisos
+  };
+})();
+</script>
 </head>
 <body>
 
@@ -1174,7 +1222,7 @@ document.getElementById("atab-perfiles").addEventListener("click",()=>{
   document.getElementById("atab-perfiles").classList.add("active");document.getElementById("atab-users").classList.remove("active");
   loadAdminPerfiles();
 });
-document.getElementById("btn-admin-exit").addEventListener("click",()=>{if(me)showScreen("screen-app");else showScreen("screen-login");});
+document.getElementById("btn-admin-exit").addEventListener("click",()=>{if(me)showScreen("screen-app");if(window.__rtPWA&&__rtPWA.permisos)setTimeout(function(){__rtPWA.permisos();},800);else showScreen("screen-login");});
 
 // ── DEMO HELPERS ──────────────────────────────────────────
 const DEMO_MS=24*60*60*1000; // 24 horas en ms
@@ -2250,5 +2298,7 @@ NOTA PARA RUBÉN:
   que esa persona entre con el código nuevo del archivo, su vínculo se copia solo a la subcolección
   miembros con rol "editor" (mismo acceso que tenía antes).
 -->
+<div id="bannerPWA" style="display:none;position:fixed;bottom:20px;left:12px;right:12px;z-index:9999;background:#1a252f;color:#fff;border-radius:16px;padding:14px 16px;align-items:center;gap:12px;box-shadow:0 6px 24px rgba(0,0,0,.35)"><div style="font-size:26px">📲</div><div style="flex:1"><div style="font-weight:800;font-size:14px">Instalá SaludAR</div><div style="font-size:12px;opacity:.75;margin-top:1px">Queda en el teléfono como una app</div></div><div style="display:flex;flex-direction:column;gap:5px"><button onclick="__rtPWA.instalar()" style="background:#27AE60;color:#fff;font-weight:800;font-size:13px;padding:8px 13px;border-radius:10px;border:none;cursor:pointer">Instalar</button><button onclick="__rtPWA.rechazar()" style="font-size:11px;color:rgba(255,255,255,.6);background:none;border:none;cursor:pointer">Ahora no</button></div></div>
+<div id="rtPermisos" style="display:none;position:fixed;inset:0;z-index:90;background:#fff;flex-direction:column;align-items:center;justify-content:center;padding:30px"><div style="font-size:22px;font-weight:800;margin-bottom:8px;text-align:center">Un permiso importante</div><div style="font-size:14px;color:#888;text-align:center;margin-bottom:24px;line-height:1.5">SaludAR necesita enviarte notificaciones<br>para recordarte tus medicamentos a tiempo.</div><div style="background:#f0fff4;border:2px solid #27AE60;border-radius:16px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;max-width:340px;width:100%"><div style="font-size:32px">🔔</div><div><div style="font-weight:800;font-size:15px">Notificaciones</div><div style="font-size:12.5px;color:#888;margin-top:2px">Recordatorios de medicamentos</div></div></div><button id="rtBtnActivar" style="width:100%;max-width:340px;background:#27AE60;color:#fff;font-size:17px;font-weight:800;padding:16px;border-radius:16px;border:none;cursor:pointer;margin-bottom:10px">Activar notificaciones</button><button onclick="document.getElementById('rtPermisos').style.display='none';localStorage.setItem('rt_perm_ok','1')" style="font-size:13px;color:#888;background:none;border:none;cursor:pointer;padding:8px">Omitir por ahora</button></div>
 </body>
 </html>
