@@ -937,7 +937,7 @@ async function activarNotificaciones(){
 
   // Paso 2: registrar SW primero (antes de pedir permiso)
   try{
-    swNotifReg = await navigator.serviceWorker.register("/saludar/sw-saludar-notif.js");
+    swNotifReg = await navigator.serviceWorker.register("/sw-saludar-notif.js");
     await navigator.serviceWorker.ready;
   }catch(e){
     logError("sw-register",e);
@@ -982,7 +982,7 @@ async function activarNotificaciones(){
 async function enviarRecordatoriosAlSW(){
   if(!perfilActivo) return;
   try{
-    const sw = swNotifReg || await navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js");
+    const sw = swNotifReg || await navigator.serviceWorker.getRegistration("/sw-saludar-notif.js");
     if(!sw?.active) return;
     sw.active.postMessage({
       type: "SET_RECORDATORIOS",
@@ -1002,7 +1002,7 @@ async function enviarRecordatoriosAlSW(){
 
 // Llamar a enviarRecordatoriosAlSW cada vez que el usuario marca una toma
 function sincronizarTomasAlSW(){
-  navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js").then(sw => {
+  navigator.serviceWorker.getRegistration("/sw-saludar-notif.js").then(sw => {
     if(sw?.active) sw.active.postMessage({ type: "SET_TOMAS_HOY", tomasHoy });
   }).catch(()=>{});
 }
@@ -1014,7 +1014,7 @@ function resetNotifAMedianoche(){
   mañana.setDate(ahora.getDate()+1);
   mañana.setHours(0,1,0,0);
   setTimeout(async ()=>{
-    const sw = await navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js");
+    const sw = await navigator.serviceWorker.getRegistration("/sw-saludar-notif.js");
     sw?.active?.postMessage({type:"RESET_NOTIFICADOS"});
     resetNotifAMedianoche();
   }, mañana - ahora);
@@ -2132,7 +2132,7 @@ async function toggleNotifPorToma(val){
     await updateDoc(doc(db,"perfiles",perfilActivo.id),{"features.notifPorToma": val});
     if(!perfilActivo.features) perfilActivo.features = {};
     perfilActivo.features.notifPorToma = val;
-    const sw = await navigator.serviceWorker.getRegistration("/saludar/sw-saludar-notif.js");
+    const sw = await navigator.serviceWorker.getRegistration("/sw-saludar-notif.js");
     if(sw?.active) sw.active.postMessage({ type: "SET_CONFIG", notifPorToma: val });
     toast(val ? "Recordatorio por toma activado ✅" : "Recordatorio por toma desactivado","ok");
   } catch(e){ logError("toggleNotifPorToma",e); toast("Error al guardar","err"); }
