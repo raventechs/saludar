@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SaludAR v2.6 — 2026-07-02 — P1+P2+P3+P5 ROBUSTEZ + notif locales SW -->
+<!-- SaludAR v2.7 — 2026-10-26 — BACKUP (no tenía): automático diario + manual + restaurar, en Perfil. v2.6 — 2026-07-02 — P1+P2+P3+P5 ROBUSTEZ + notif locales SW -->
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
@@ -1305,6 +1305,7 @@ onAuthStateChanged(auth,async user=>{
     document.body.classList.toggle("role-veedor",myDoc.esFamiliar&&myRolEnPerfil==="veedor");
     renderPage("inicio");
     checkDemo(); // chequear demo después de cargar
+    chequearBackupDiario();   // v2.7: backup automático diario
   } else {
     me=null;myDoc=null;perfiles=[];perfilActivo=null;
     document.body.classList.remove("role-veedor");
@@ -2172,6 +2173,155 @@ async function exportarCSV() {
     showToast('CSV exportado');
   } catch(e) { logError('exportCSV', e); }
 }
+
+// ══════════ BACKUP ESTÁNDAR 2.7 ══════════
+// Automático: una vez por día al entrar el dueño. Baja el archivo JSON al dispositivo y deja una copia en IndexedDB (las últimas 7).
+// Manual y restaurar: botones de la sección de backup. Las fechas de Firestore (Timestamp) se guardan con una marca reversible.
+// Está dentro del módulo de la app (antes estaba en un script aparte que no veía db, auth ni getDocs y fallaba siempre).
+function _bkHoy() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function _bkSer(v) {
+  if (v && typeof v === 'object') {
+    if (typeof v.toMillis === 'function' && 'seconds' in v && 'nanoseconds' in v) return { __ts: [v.seconds, v.nanoseconds] };
+    if (Array.isArray(v)) return v.map(_bkSer);
+    const o = {}; Object.keys(v).forEach(k => { o[k] = _bkSer(v[k]); }); return o;
+  }
+  return v;
+}
+function _bkRev(v) {
+  if (v && typeof v === 'object') {
+    if (Array.isArray(v)) return v.map(_bkRev);
+    if (Array.isArray(v.__ts) && v.__ts.length === 2) return new Timestamp(v.__ts[0], v.__ts[1]);
+    const o = {}; Object.keys(v).forEach(k => { o[k] = _bkRev(v[k]); }); return o;
+  }
+  return v;
+}
+async function _bkLeer(ref) {
+  const s = await ref.get();
+  return s.docs.map(d => Object.assign({ _id: d.id }, _bkSer(d.data())));
+}
+function _bkIdb(fecha, json) {
+  return new Promise(function (res) {
+    try {
+      const rq = indexedDB.open('saludar-backup', 1);
+      rq.onupgradeneeded = function () { rq.result.createObjectStore('b', { keyPath: 'fecha' }); };
+      rq.onsuccess = function () {
+        const idb = rq.result, tx = idb.transaction('b', 'readwrite'), st = tx.objectStore('b');
+        st.put({ fecha: fecha, json: json });
+        st.getAllKeys().onsuccess = function (e) { const ks = e.target.result.sort(); while (ks.length > 7) st.delete(ks.shift()); };
+        tx.oncomplete = function () { idb.close(); res(true); };
+        tx.onerror = tx.onabort = function () { idb.close(); res(false); };
+      };
+      rq.onerror = function () { res(false); };
+    } catch (e) { res(false); }
+  });
+}
+function _bkDescargar(json, fecha) {
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'saludar-backup-' + fecha + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+}
+async function _bkDocs(q) { const s = await getDocs(q); return s.docs.map(function (d) { return Object.assign({ _id: d.id }, _bkSer(d.data())); }); }
+async function _bkEscribir(ops) {
+  for (let i = 0; i < ops.length; i += 25)
+    await Promise.all(ops.slice(i, i + 25).map(function (o) { return o[2] ? setDoc(o[0], o[1], { merge: true }) : setDoc(o[0], o[1]); }));
+}
+function _bkCfg() { return { app: 'SaludAR', ver: '2.7', ls: 'saludar-ultimo-backup', label: 'ultimoBackupFecha', sub: ['estudios', 'turnos', 'medicos', 'historial', 'medicamentos'] }; }
+function _bkMsg(m, t) { toast(m, t === 'err' ? 'err' : ''); }
+function _bkCtx() {
+  if (!me || !myDoc) return { ok: false, msg: 'Iniciá sesión primero' };
+  if (myDoc.esFamiliar) return { ok: false, msg: 'Solo el titular puede hacer el backup' };
+  return { ok: true, uid: me.uid };
+}
+async function _bkReunir(C) {
+  const ps = await getDocs(query(collection(db, 'perfiles'), where('titularUid', '==', C.uid)));
+  const perfiles = [];
+  for (const p of ps.docs) {
+    const sub = {};
+    for (const n of _bkCfg().sub) sub[n] = await _bkDocs(collection(db, 'perfiles', p.id, n));
+    perfiles.push(Object.assign({ _id: p.id }, _bkSer(p.data()), { _sub: sub }));
+  }
+  return { perfiles: perfiles };   // los familiares vinculados (miembros) no se guardan: son accesos, no datos de salud
+}
+function _bkOps(bk, C) {
+  if (!Array.isArray(bk.perfiles)) throw new Error('el archivo no tiene perfiles');
+  const ops = [];
+  bk.perfiles.forEach(function (p) {
+    const r = Object.assign({}, p), pid = r._id, sub = r._sub || {};
+    delete r._id; delete r._sub; delete r.features; delete r.cantidadMiembros; delete r.notifActivas;   // plan y avisos de este dispositivo no se pisan
+    if (!pid) return;
+    const x = _bkRev(r); x.titularUid = C.uid;
+    ops.push([doc(db, 'perfiles', pid), x, true]);
+    _bkCfg().sub.forEach(function (n) { (sub[n] || []).forEach(function (d) { const y = Object.assign({}, d), id = y._id; delete y._id; if (id) ops.push([doc(db, 'perfiles', pid, n, id), _bkRev(y)]); }); });
+  });
+  return ops;
+}
+function _bkMontarUI(el) {
+  if (!el || el.querySelector('#bkCard')) return;
+  const K = _bkCfg();
+  const d = document.createElement('div'); d.className = 'card'; d.id = 'bkCard'; d.style.marginTop = '16px';
+  d.innerHTML = '<div class="sec-title" style="margin-bottom:8px">💾 Backup de datos</div>' +
+    '<p style="font-size:13px;color:var(--muted);margin-bottom:12px">Una copia de los datos de salud de tus perfiles (estudios, turnos, médicos, historial y medicamentos). El archivo queda en tu dispositivo: guardalo en un lugar seguro. Se baja solo una vez por día al entrar; también podés bajarlo cuando quieras o restaurar uno anterior.</p>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    '<button class="btn-sm gold" id="bkBtnGen" style="width:auto;padding:9px 14px;font-size:13px">📥 Descargar backup ahora</button>' +
+    '<button class="btn-sm" id="bkBtnRest" style="width:auto;padding:9px 14px;font-size:13px">📤 Restaurar desde un archivo</button></div>' +
+    '<input type="file" id="inputRestaurarBackup" accept=".json,application/json" style="display:none">' +
+    '<p style="font-size:11px;color:var(--muted);margin-top:8px">Último backup: <span id="ultimoBackupFecha">—</span></p>';
+  el.appendChild(d);
+  d.querySelector('#bkBtnGen').addEventListener('click', function () { generarBackup(false); });
+  d.querySelector('#bkBtnRest').addEventListener('click', function () { d.querySelector('#inputRestaurarBackup').click(); });
+  d.querySelector('#inputRestaurarBackup').addEventListener('change', function () { restaurarBackup(this); });
+  let ultimo = null; try { ultimo = localStorage.getItem(K.ls); } catch (e) {}
+  if (ultimo) d.querySelector('#ultimoBackupFecha').textContent = ultimo;
+}
+(function () { const o = renderPerfil; renderPerfil = function () { o.apply(this, arguments); _bkMontarUI(document.getElementById('page-perfil')); }; })();
+
+async function generarBackup(silencioso) {
+  const K = _bkCfg(), C = _bkCtx();
+  if (!C.ok) { if (!silencioso) _bkMsg(C.msg, 'err'); return; }
+  try {
+    if (!silencioso) _bkMsg('Preparando backup…');
+    const datos = await _bkReunir(C);
+    const fecha = _bkHoy();
+    const json = JSON.stringify(Object.assign({ app: K.app, version: K.ver, fecha: new Date().toISOString(), uid: C.uid }, datos));
+    _bkDescargar(json, fecha);
+    await _bkIdb(fecha, json);
+    try { localStorage.setItem(K.ls, fecha); } catch (e) {}
+    const el = document.getElementById(K.label); if (el) el.textContent = fecha;
+    if (!silencioso) _bkMsg('✅ Backup descargado');
+  } catch (e) { logError('generarBackup', e.message); if (!silencioso) _bkMsg('Error al generar backup: ' + e.message, 'err'); }
+}
+async function restaurarBackup(input) {
+  const K = _bkCfg(), C = _bkCtx();
+  const file = input.files && input.files[0];
+  if (!file) return;
+  try {
+    if (!C.ok) { _bkMsg(C.msg, 'err'); return; }
+    const bk = JSON.parse(await file.text());
+    if (bk.app !== K.app) { _bkMsg('El archivo no es un backup de ' + K.app, 'err'); return; }
+    const ops = _bkOps(bk, C);
+    if (!confirm('Se van a volver a cargar ' + ops.length + ' registros en tu cuenta. Los que ya existen se reemplazan por los del archivo; el resto queda como está. ¿Continuar?')) return;
+    _bkMsg('Restaurando…');
+    await _bkEscribir(ops);
+    _bkMsg('✅ Backup restaurado (' + ops.length + ' registros)');
+    setTimeout(function () { location.reload(); }, 1500);
+  } catch (e) { logError('restaurarBackup', e.message); _bkMsg('Error al restaurar: ' + e.message, 'err'); }
+  finally { input.value = ''; }
+}
+function chequearBackupDiario() {
+  const K = _bkCfg(), C = _bkCtx();
+  if (!C.ok) return;
+  let ultimo = null; try { ultimo = localStorage.getItem(K.ls); } catch (e) {}
+  const el = document.getElementById(K.label); if (el && ultimo) el.textContent = ultimo;
+  if (ultimo !== _bkHoy()) setTimeout(function () { generarBackup(true); }, 5000);
+}
+window.generarBackup = generarBackup; window.restaurarBackup = restaurarBackup;
+// ══════════ FIN BACKUP ══════════
 
 // Toggle notifPorToma — feature plus
 async function toggleNotifPorToma(val){
