@@ -2366,6 +2366,53 @@ function _bkOps(bk, C) {
   });
   return ops;
 }
+// ══════════ MODO PRÁCTICA ══════════
+// Todo lo que se crea acá lleva _demo:true y se puede quitar sin tocar datos reales.
+const PR_COLS=["medicamentos","estudios","turnos","medicos","historial"];
+async function _prEscribir(ops){
+  for(let i=0;i<ops.length;i+=20) await Promise.all(ops.slice(i,i+20).map(o=>o[1]===null?deleteDoc(o[0]):setDoc(o[0],o[1])));
+}
+function _prFecha(dias){const f=new Date();f.setDate(f.getDate()+dias);return f.toISOString().slice(0,10);}
+async function cargarPractica(){
+  if(!perfilActivo){toast("Primero elegí un perfil","err");return;}
+  if(myRolEnPerfil==="veedor"){toast("Tu rol es solo lectura","err");return;}
+  if(!confirm("Se cargan datos de salud de ejemplo en el perfil activo. Podés quitarlos después. ¿Seguir?"))return;
+  try{
+    const ya=await getDocs(query(collection(db,"perfiles",perfilActivo.id,"medicos"),where("_demo","==",true)));
+    if(!ya.empty){toast("Ya hay una práctica cargada. Quitala primero.","err");return;}
+    toast("Cargando práctica…");
+    const pid=perfilActivo.id,c=n=>doc(collection(db,"perfiles",pid,n)),ops=[];
+    [["Enalapril","10 mg","08:00, 20:00","Con comida"],["Metformina","850 mg","09:00, 21:00","Después de comer"],["Vitamina D","1000 UI","12:00","Una vez por día"]]
+      .forEach(([nombre,dosis,horarios,indicaciones])=>ops.push([c("medicamentos"),{nombre,dosis,horarios,indicaciones,frecuencia:"todos",_demo:true}]));
+    [[-30,"Análisis de sangre","Laboratorio Central","Dra. Pérez","Colesterol levemente alto"],[-90,"Electrocardiograma","Clínica del Sur","Dr. Gómez","Sin particularidades"]]
+      .forEach(([d,tipo,laboratorio,medico,observaciones])=>ops.push([c("estudios"),{fecha:_prFecha(d),tipo,laboratorio,medico,observaciones,_demo:true}]));
+    [[3,"10:30","Cardiología","Dr. Gómez","Clínica del Sur","Llevar estudios anteriores"],[10,"16:00","Clínica médica","Dra. Pérez","Consultorio Centro",""]]
+      .forEach(([d,hora,especialidad,medico,lugar,notas])=>ops.push([c("turnos"),{fecha:_prFecha(d),hora,especialidad,medico,lugar,notas,_demo:true}]));
+    [["Dra. Pérez","Clínica médica","11 5555-1234","Obra social de ejemplo","Av. Siempre Viva 123",""],["Dr. Gómez","Cardiología","11 5555-5678","Obra social de ejemplo","Calle Falsa 456",""]]
+      .forEach(([nombre,especialidad,telefono,obraSocial,direccion,notas])=>ops.push([c("medicos"),{nombre,especialidad,telefono,obraSocial,direccion,notas,_demo:true}]));
+    [[-45,"Consulta de control","Control","Dra. Pérez","Consultorio Centro"],[-120,"Vacuna antigripal","Vacunación","Enfermería","Centro de salud"]]
+      .forEach(([d,descripcion,tipo,medico,lugar])=>ops.push([c("historial"),{fecha:_prFecha(d),descripcion,tipo,medico,lugar,_demo:true}]));
+    await _prEscribir(ops);
+    toast("✅ Práctica cargada. Mirá Inicio, Medicación y Turnos.");
+    setTimeout(()=>location.reload(),1200);
+  }catch(e){logError("cargarPractica",e.message);toast("Error: "+e.message,"err");}
+}
+async function quitarPractica(){
+  if(!perfilActivo)return;
+  if(!confirm("Se quitan SOLO los datos de práctica del perfil activo. Tus datos reales no se tocan. ¿Seguir?"))return;
+  try{
+    toast("Quitando práctica…");
+    const ops=[];
+    for(const n of PR_COLS){
+      const s=await getDocs(query(collection(db,"perfiles",perfilActivo.id,n),where("_demo","==",true)));
+      s.forEach(d=>ops.push([d.ref,null]));
+    }
+    await _prEscribir(ops);
+    toast("✅ Datos de práctica quitados");
+    setTimeout(()=>location.reload(),1200);
+  }catch(e){logError("quitarPractica",e.message);toast("Error: "+e.message,"err");}
+}
+
 function _bkMontarUI(el) {
   if (!el || el.querySelector('#bkCard')) return;
   const K = _bkCfg();
@@ -2378,6 +2425,16 @@ function _bkMontarUI(el) {
     '<input type="file" id="inputRestaurarBackup" accept=".json,application/json" style="display:none">' +
     '<p style="font-size:11px;color:var(--muted);margin-top:8px">Último backup: <span id="ultimoBackupFecha">—</span></p>';
   el.appendChild(d);
+  // ── Modo Práctica ──
+  const pr = document.createElement('div'); pr.className = 'card'; pr.id = 'prCard'; pr.style.marginTop = '16px';
+  pr.innerHTML = '<div class="sec-title" style="margin-bottom:8px">🎓 Modo Práctica</div>' +
+    '<p style="font-size:13px;color:var(--muted);margin-bottom:12px">Carga datos de ejemplo en el perfil activo (medicamentos, estudios, turnos, médicos e historial) para aprender o mostrar la app. Todo queda marcado y se quita con un botón, sin tocar tus datos reales. Ojo: los medicamentos de práctica también generan avisos.</p>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    '<button class="btn-sm gold" id="prBtnCargar" style="width:auto;padding:9px 14px;font-size:13px">🎓 Cargar datos de práctica</button>' +
+    '<button class="btn-sm" id="prBtnQuitar" style="width:auto;padding:9px 14px;font-size:13px">🧽 Quitar datos de práctica</button></div>';
+  el.appendChild(pr);
+  pr.querySelector('#prBtnCargar').addEventListener('click', cargarPractica);
+  pr.querySelector('#prBtnQuitar').addEventListener('click', quitarPractica);
   d.querySelector('#bkBtnGen').addEventListener('click', function () { generarBackup(false); });
   d.querySelector('#bkBtnRest').addEventListener('click', function () { d.querySelector('#inputRestaurarBackup').click(); });
   d.querySelector('#inputRestaurarBackup').addEventListener('change', function () { restaurarBackup(this); });
