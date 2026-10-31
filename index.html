@@ -1228,8 +1228,8 @@ async function loadAdminUsers(){
       }
       demoActions=`
         <div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
-          <input type="number" min="1" max="30" value="7" style="width:56px;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font)" data-ext-uid="${d.id}" placeholder="días"/>
-          <button class="btn-aext" data-uid="${d.id}">⏱ Extender demo</button>
+          <button class="btn-aext" data-uid="${d.id}" data-dias="7">⏱ +7 días</button>
+        <button class="btn-aext" data-uid="${d.id}" data-dias="30">⏱ +30 días</button>
           <button class="btn-aact" data-uid="${d.id}">✅ Activar completo</button>
         </div>`;
     }
@@ -1283,8 +1283,7 @@ document.getElementById("admin-users-list").addEventListener("click",async e=>{
   if(unban){await updateDoc(doc(db,"usuarios",unban.dataset.uid),{banned:false});toast("Usuario desbaneado");await loadAdminUsers();}
   if(del&&confirm("¿Eliminar este usuario?")){await deleteDoc(doc(db,"usuarios",del.dataset.uid));toast("Usuario eliminado");await loadAdminUsers();}
   if(ext){
-    const diasInput=document.querySelector(`input[data-ext-uid="${ext.dataset.uid}"]`);
-    const dias=parseInt(diasInput?.value)||7;
+    const dias=parseInt(ext.dataset.dias)||7;
     const snap=await getDoc(doc(db,"usuarios",ext.dataset.uid));
     const u=snap.data();
     const baseMs=u.demoExpiry?.toMillis?.()||((u.demoStart?.toMillis?.()||Date.now())+86400000);
