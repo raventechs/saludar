@@ -921,7 +921,7 @@ async function ejecutarJoinSalud(userFirebase){
     await setDoc(doc(db,"perfiles",inv.perfilId,"miembros",userFirebase.uid),{
       uid:userFirebase.uid,email:userFirebase.email,
       nombre:document.getElementById("inv-nombre")?.value.trim()||userFirebase.displayName||userFirebase.email.split("@")[0],
-      rol:inv.rol,createdAt:serverTimestamp()
+      rol:inv.rol,codigo:inv.code,createdAt:serverTimestamp()
     });
     await updateDoc(doc(db,"perfiles",inv.perfilId),{cantidadMiembros:increment(1)});
     await updateDoc(doc(db,"invitacionesSalud",inv.code),{usado:true,usadoPor:userFirebase.email,usadoAt:serverTimestamp()});
@@ -963,8 +963,9 @@ if(_inviteCode){
         document.getElementById("invite-already-logged").style.display="none";
         return;
       }
-      const perfSnap=await getDoc(doc(db,"perfiles",inv.perfilId));
-      const perf=perfSnap.exists()?perfSnap.data():{nombre:"este perfil de salud"};
+      // Las reglas no dejan leer el perfil a quien todavía no es miembro: se usa un nombre genérico
+      let perf={nombre:"este perfil de salud"};
+      try{const perfSnap=await getDoc(doc(db,"perfiles",inv.perfilId));if(perfSnap.exists())perf=perfSnap.data();}catch(e){}
       const rolLabel=inv.rol==="veedor"?"👁 Veedor (solo lectura)":"✏️ Editor";
       document.getElementById("invite-perfil-nombre").textContent=perf.nombre||"Perfil de salud";
       document.getElementById("invite-perfil-sub").textContent=`Fuiste invitado a ver este perfil como ${rolLabel}`;
@@ -1920,7 +1921,7 @@ function bindInviteListeners(){
     btn.disabled=true;btn.textContent="Generando...";
     try{
       const expiry=new Date(Date.now()+24*60*60*1000);
-      const code=Math.random().toString(36).substring(2,10)+Date.now().toString(36);
+      const _rb=new Uint8Array(12);crypto.getRandomValues(_rb);const code=Array.from(_rb,b=>b.toString(36).padStart(2,"0")).join("")+Date.now().toString(36);
       await setDoc(doc(db,"invitacionesSalud",code),{perfilId:perfilActivo.id,titularUid:me.uid,rol,expiry:Timestamp.fromDate(expiry),usado:false,createdAt:serverTimestamp()});
       const baseUrl=window.location.origin+window.location.pathname;
       const link=`${baseUrl}?invite=${code}`;
@@ -2459,7 +2460,7 @@ async function setLimitePerfiles(uid, limite){
 </script>
 
 <!--
-FIRESTORE SECURITY RULES — SaludAR con grupo familiar (roles editor/veedor)
+FIRESTORE SECURITY RULES — OBSOLETAS: las vigentes están en el repo raventechs/gasar → qa/rules/saludar.rules
 
 rules_version = '2';
 service cloud.firestore {
