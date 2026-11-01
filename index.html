@@ -831,9 +831,9 @@ var __rtPWA=(function(){
 <div class="demo-wall" id="demo-wall">
   <div class="demo-wall-card">
     <div class="demo-wall-icon">⏳</div>
-    <div class="demo-wall-title">Tu demo de 24hs terminó</div>
+    <div class="demo-wall-title">Tu prueba gratis terminó</div>
     <div class="demo-wall-sub">Gracias por probar SaludAR. Para continuar usando la app, contactanos y te activamos tu cuenta.</div>
-    <a id="btn-demo-email" href="mailto:ventas@raventechsapp.com?subject=Quiero activar SaludAR&body=Hola, probé la demo y me interesa continuar." class="btn-contact-email">✉️ Contactar por email</a>
+    <a id="btn-demo-email" href="https://wa.me/5491136547592?text=Hola%20RavenTechs%2C%20quiero%20activar%20mi%20cuenta%20de%20SaludAR" target="_blank" rel="noopener" class="btn-contact-email">📲 Activar mi cuenta por WhatsApp</a>
     <button class="demo-logout" id="btn-demo-logout">Cerrar sesión</button>
   </div>
 </div>
@@ -1329,7 +1329,7 @@ document.getElementById("atab-perfiles").addEventListener("click",()=>{
 document.getElementById("btn-admin-exit").addEventListener("click",()=>{if(me)showScreen("screen-app");if(window.__rtPWA&&__rtPWA.permisos)setTimeout(function(){__rtPWA.permisos();},800);else showScreen("screen-login");});
 
 // ── DEMO HELPERS ──────────────────────────────────────────
-const DEMO_MS=24*60*60*1000; // 24 horas en ms
+const DEMO_MS=14*24*60*60*1000; // prueba gratis: 14 días
 
 function getDemoRestante(demoStart,demoExpiry){
   // demoExpiry = fecha de vencimiento absoluta (si admin extendió)
@@ -1344,6 +1344,7 @@ function fmtRestante(ms){
   if(ms<=0)return"Vencida";
   const h=Math.floor(ms/3600000);
   const m=Math.floor((ms%3600000)/60000);
+  if(ms>=86400000)return '🎓 Prueba: '+Math.ceil(ms/86400000)+' días';
   return h>0?`${h}h ${m}m restantes`:`${m} minutos restantes`;
 }
 
@@ -1358,7 +1359,7 @@ function checkDemo(){
     return;
   }
   // Mostrar countdown en header
-  const urgente=restante<3600000; // menos de 1 hora
+  const urgente=restante<3*86400000;
   const tag=document.getElementById("plan-tag");
   const cd=document.createElement("span");
   cd.className="demo-countdown"+(urgente?" urgente":"");
