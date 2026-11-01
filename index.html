@@ -1181,7 +1181,7 @@ function resetNotifAMedianoche(){
   });
 });
 
-function openPin(){pinBuf="";updDots();document.getElementById("pin-err").style.display="none";document.getElementById("pin-overlay").classList.add("open");}
+function openPin(){/* sin PIN: abre directo solo con la cuenta admin */if(window.rtIsAdmin&&window.rtIsAdmin()){showScreen("screen-admin");loadAdminUsers();}}
 function closePin(){document.getElementById("pin-overlay").classList.remove("open");}
 function updDots(){for(let i=0;i<4;i++)document.getElementById("d"+i).classList.toggle("filled",i<pinBuf.length);}
 
