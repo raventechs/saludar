@@ -98,8 +98,8 @@ function notificar(tag, titulo, cuerpo, opciones = {}) {
   yaNotificados[tag] = true;
   self.registration.showNotification(titulo, {
     body: cuerpo,
-    icon:  '/saludar/icon-192.png',
-    badge: '/saludar/icon-192.png',
+    icon:  '/icon-192.png',
+    badge: '/icon-192.png',
     tag,
     data:  { url: '/' },
     requireInteraction: true,
