@@ -1,4 +1,4 @@
-// sw-saludar-notif.js — SaludAR v2.4
+// sw-saludar-notif.js — SaludAR v2.8 (08/11/2026: red primero, hora h23, ventana de 30 min en los avisos)
 // Notificaciones locales sin FCM — Timezone: America/Argentina/Buenos_Aires
 // Lógica:
 //   - Tomas: notificación puntual a la hora exacta
@@ -6,7 +6,8 @@
 //   - 22:00: resumen de todas las tomas pendientes del día
 //   - Turnos/Estudios: día anterior a la misma hora + día del evento a las 08:00
 
-const CACHE_NAME = 'saludar-v2.4';
+const CACHE_NAME = 'saludar-v2.8';
+const ESTADO_CACHE = 'saludar-notif-estado';
 const SHELL = [
   '/',
   '/index.html',
@@ -25,7 +26,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k !== CACHE_NAME && k !== ESTADO_CACHE).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
@@ -36,21 +37,21 @@ self.addEventListener('fetch', e => {
   if (url.hostname.includes('firestore.googleapis.com') ||
       url.hostname.includes('identitytoolkit.googleapis.com') ||
       url.hostname.includes('securetoken.googleapis.com')) return;
+  if (e.request.method !== 'GET') return;
+  // RED PRIMERO (estándar RavenTechs): las actualizaciones llegan siempre; sin conexión se usa la copia guardada
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(res => {
-        if (res && res.status === 200 &&
-            (url.origin === self.location.origin ||
-             url.hostname.includes('googleapis.com') ||
-             url.hostname.includes('gstatic.com'))) {
-          caches.open(CACHE_NAME).then(c => c.put(e.request, res.clone()));
-        }
-        return res;
-      }).catch(() => {
-        if (e.request.mode === 'navigate') return caches.match('/index.html');
-      });
-    })
+    fetch(e.request).then(res => {
+      if (res && res.status === 200 &&
+          (url.origin === self.location.origin ||
+           url.hostname.includes('googleapis.com') ||
+           url.hostname.includes('gstatic.com'))) {
+        const copia = res.clone();
+        caches.open(CACHE_NAME).then(c => c.put(e.request, copia));
+      }
+      return res;
+    }).catch(() =>
+      caches.match(e.request).then(cached => cached || (e.request.mode === 'navigate' ? caches.match('/index.html') : undefined))
+    )
   );
 });
 
@@ -66,7 +67,7 @@ function ahoraAR() {
   const fmt = new Intl.DateTimeFormat('es-AR', {
     timeZone: 'America/Argentina/Buenos_Aires',
     year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hour12: false
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
   });
   const parts = fmt.formatToParts(new Date());
   const get = t => parts.find(p => p.type === t)?.value || '00';
@@ -92,10 +93,39 @@ function fechaMananaAR() {
   }).format(d).split('/').reverse().join('-');
 }
 
+// Ventana de 30 min: si el sistema demora o despierta tarde al service worker, el aviso igual sale una sola vez (el tag evita repetirlo)
+const VENTANA_MIN = 30;
+function aMin(hhmm) { const [h, m] = String(hhmm).split(':').map(Number); return (h || 0) * 60 + (m || 0); }
+function enVentana(objetivo, ahora) { const d = aMin(ahora) - aMin(objetivo); return d >= 0 && d < VENTANA_MIN; }
+
+// ── Estado persistente ─────────────────────────────────────────
+// El sistema detiene el service worker cuando está inactivo y pierde lo que tenía en memoria.
+// Guardamos medicamentos, turnos, tomas del día y avisos ya enviados para que, al despertar, no avise
+// una toma ya hecha ni repita un aviso. Las tomas y los avisos son del día: si cambió la fecha se descartan.
+function guardarEstado() {
+  try {
+    const cuerpo = JSON.stringify({ fecha: ahoraAR().fecha, medicamentos, turnos, tomasHoy, yaNotificados, notifPorToma });
+    caches.open(ESTADO_CACHE).then(c => c.put('/__estado', new Response(cuerpo))).catch(() => {});
+  } catch (e) {}
+}
+const estadoListo = (async () => {
+  try {
+    const c = await caches.open(ESTADO_CACHE);
+    const r = await c.match('/__estado');
+    if (!r) return;
+    const j = await r.json();
+    medicamentos = j.medicamentos || medicamentos;
+    turnos = j.turnos || turnos;
+    notifPorToma = !!j.notifPorToma;
+    if (j.fecha === ahoraAR().fecha) { tomasHoy = j.tomasHoy || {}; yaNotificados = j.yaNotificados || {}; }
+  } catch (e) {}
+})();
+
 // ── Dispatcher de notificaciones ──────────────────────────────
 function notificar(tag, titulo, cuerpo, opciones = {}) {
   if (yaNotificados[tag]) return;
   yaNotificados[tag] = true;
+  guardarEstado();
   self.registration.showNotification(titulo, {
     body: cuerpo,
     icon:  '/icon-192.png',
@@ -109,7 +139,8 @@ function notificar(tag, titulo, cuerpo, opciones = {}) {
 }
 
 // ── Chequeo principal — se ejecuta cada 60 seg ─────────────────
-function chequear() {
+async function chequear() {
+  await estadoListo;
   const { fecha, hora, horaH } = ahoraAR();
 
   // ── 1. TOMAS PUNTUALES (solo si notifPorToma = true — feature plus) ────
@@ -118,7 +149,7 @@ function chequear() {
       if (!m.activo) return;
       const horarios = (m.horarios || '').split(',').map(h => h.trim()).filter(Boolean);
       horarios.forEach(h => {
-        if (h !== hora) return;
+        if (!enVentana(h, hora)) return;
         const clave = `toma_${m.id}_${h}_${fecha}`;
         if (tomasHoy[`${m.id}_${h}`]) return;
         notificar(clave, '💊 Recordatorio de medicación',
@@ -128,7 +159,7 @@ function chequear() {
   }
 
   // ── 2. RESUMEN MEDIODÍA (12:00) ───────────────────────────
-  if (hora === '12:00') {
+  if (enVentana('12:00', hora)) {
     const pendientesMañana = medicamentos.filter(m => {
       if (!m.activo) return false;
       const horarios = (m.horarios || '').split(',').map(h => h.trim()).filter(Boolean);
@@ -145,7 +176,7 @@ function chequear() {
   }
 
   // ── 3. RESUMEN NOCTURNO (22:00) ───────────────────────────
-  if (hora === '22:00') {
+  if (enVentana('22:00', hora)) {
     const pendientesNoche = medicamentos.filter(m => {
       if (!m.activo) return false;
       const horarios = (m.horarios || '').split(',').map(h => h.trim()).filter(Boolean);
@@ -170,14 +201,14 @@ function chequear() {
     const titulo = t.titulo || t.especialidad || tipo;
 
     // Día anterior a la misma hora del evento
-    if (t.fecha === mañana && horaEvento === hora) {
+    if (t.fecha === mañana && enVentana(horaEvento, hora)) {
       notificar(`turno_previo_${t.id}_${fecha}`,
         `📅 Recordatorio — ${tipo} mañana`,
         `Mañana a las ${horaEvento} tenés: ${titulo}`);
     }
 
     // Mismo día del evento a las 08:00
-    if (t.fecha === fecha && hora === '08:00') {
+    if (t.fecha === fecha && enVentana('08:00', hora)) {
       notificar(`turno_hoy_${t.id}_${fecha}`,
         `📅 ${tipo} hoy`,
         `Hoy a las ${horaEvento} tenés: ${titulo}`);
@@ -191,16 +222,20 @@ self.addEventListener('message', e => {
     case 'SET_RECORDATORIOS':
       medicamentos = e.data.medicamentos || [];
       turnos       = e.data.turnos       || [];
+      guardarEstado();
       break;
     case 'SET_TOMAS_HOY':
       tomasHoy = e.data.tomasHoy || {};
+      guardarEstado();
       break;
     case 'RESET_NOTIFICADOS':
       yaNotificados = {};
       tomasHoy = {};
+      guardarEstado();
       break;
     case 'SET_CONFIG':
       notifPorToma = e.data.notifPorToma || false;
+      guardarEstado();
       break;
   }
 });
