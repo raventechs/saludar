@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- SaludAR v2.11 — 2026-11-08 — FAMILIAR: al unirse por invitación se guarda perfilId en la cuenta y el perfil compartido se abre directo (antes dependía de una búsqueda collectionGroup que exige un índice y dejaba la app vacía); si no se puede abrir muestra un aviso rojo; reenviar un link repara el vínculo. v2.10 — LOGIN: al cerrar sesión la app olvida la cuenta anterior y Google muestra la lista para elegir otra (antes reingresaba siempre con la misma). v2.9 — 2026-11-08 — MENÚ ADMIN: se abre con la sesión activa (antes dependía de un escaneo del teléfono) y, si no es la cuenta admin, avisa con qué cuenta se está ingresando; versión visible al pie de Perfil. v2.8 — 2026-11-08 — HORARIO: la fecha del día (tomas del día, fechas de práctica) usa hora de Argentina en vez de UTC (desde las 21:00 las tomas marcadas pasaban al día siguiente y el resumen de las 22:00 fallaba); service worker de notificaciones en modo red primero (antes cache-first dejaba versiones viejas); avisos con ventana de 30 min para no perderse si el sistema demora al service worker. PENDIENTE: aviso con la app cerrada (ver informe de auditoría). v2.7 — 2026-10-26 — BACKUP (no tenía): automático diario + manual + restaurar, en Perfil. v2.6 — 2026-07-02 — P1+P2+P3+P5 ROBUSTEZ + notif locales SW -->
+<!-- SaludAR v2.11 — 2026-11-08 — FAMILIAR: el invitado hereda el estado del titular (activo / vencimiento de su prueba, guardado en el perfil) y no tiene prueba propia; al unirse por invitación se guarda perfilId en la cuenta y el perfil compartido se abre directo (antes dependía de una búsqueda collectionGroup que exige un índice y dejaba la app vacía); si no se puede abrir muestra un aviso rojo; reenviar un link repara el vínculo. v2.10 — LOGIN: al cerrar sesión la app olvida la cuenta anterior y Google muestra la lista para elegir otra (antes reingresaba siempre con la misma). v2.9 — 2026-11-08 — MENÚ ADMIN: se abre con la sesión activa (antes dependía de un escaneo del teléfono) y, si no es la cuenta admin, avisa con qué cuenta se está ingresando; versión visible al pie de Perfil. v2.8 — 2026-11-08 — HORARIO: la fecha del día (tomas del día, fechas de práctica) usa hora de Argentina en vez de UTC (desde las 21:00 las tomas marcadas pasaban al día siguiente y el resumen de las 22:00 fallaba); service worker de notificaciones en modo red primero (antes cache-first dejaba versiones viejas); avisos con ventana de 30 min para no perderse si el sistema demora al service worker. PENDIENTE: aviso con la app cerrada (ver informe de auditoría). v2.7 — 2026-10-26 — BACKUP (no tenía): automático diario + manual + restaurar, en Perfil. v2.6 — 2026-07-02 — P1+P2+P3+P5 ROBUSTEZ + notif locales SW -->
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
@@ -1364,6 +1364,13 @@ function fmtRestante(ms){
 
 function checkDemo(){
   if(!myDoc)return;
+  // v2.11: el familiar invitado hereda el estado del titular (el plus familiar lo paga el titular): no tiene prueba propia
+  if(myDoc.esFamiliar){
+    const p=perfilActivo;
+    if(!p||p.titularStatus==="activo"||p.titularVence==null)return;   // titular activo o sin dato: entra normal
+    if(p.titularVence-Date.now()<=0)document.getElementById("demo-wall").classList.add("open");   // la prueba del titular venció
+    return;
+  }
   if(myDoc.status==="activo")return; // cuenta completa, sin límite
   const restante=getDemoRestante(myDoc.demoStart,myDoc.demoExpiry||null);
   if(restante===null)return;
@@ -1546,6 +1553,17 @@ async function loadPerfiles(){
     const q=query(collection(db,"perfiles"),where("titularUid","==",me.uid));
     const snap=await getDocs(q);
     perfiles=snap.docs.map(d=>({id:d.id,...d.data()}));
+    // v2.11: el titular deja en su perfil su estado (activo / vencimiento de la prueba) para que los familiares invitados lo hereden
+    try{
+      const ts=myDoc.status==="activo"?"activo":"demo";
+      const vm=ts==="activo"?null:(myDoc.demoExpiry?myDoc.demoExpiry.toMillis():(myDoc.demoStart?myDoc.demoStart.toMillis()+DEMO_MS:null));
+      for(const p of perfiles){
+        if(p.titularStatus!==ts||(p.titularVence??null)!==vm){
+          await updateDoc(doc(db,"perfiles",p.id),{titularStatus:ts,titularVence:vm});
+          p.titularStatus=ts;p.titularVence=vm;
+        }
+      }
+    }catch(e){console.error("sync estado titular:",e);}
   }
 
   perfilActivo=perfiles[0]||null;
