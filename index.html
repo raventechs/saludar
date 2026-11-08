@@ -1236,8 +1236,8 @@ async function loadAdminUsers(){
     const limiteActual = u.features?.limitePerfiles || 1;
     const familiarActions=u.familiarHabilitado
       ? `<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
-          <input type="number" min="1" max="20" value="${u.limiteMiembros||3}" style="width:56px;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font)" data-cupo-uid="${d.id}"/>
-          <button class="btn-acupo" data-uid="${d.id}">💾 Guardar cupo</button>
+          <span style="font-size:12px;color:var(--muted)">Cupo familiar:</span>
+          ${[[3,'3'],[5,'5'],[10,'10']].map(([v,l])=>`<button class="btn-acupo" data-uid="${d.id}" data-val="${v}" style="flex:none;padding:6px 10px;${(u.limiteMiembros||3)===v?'background:#7c3aed;color:#fff;border-color:#7c3aed':''}">${l}</button>`).join('')}
           <button class="btn-afam-off" data-uid="${d.id}">🚫 Deshabilitar Familiar</button>
           <select onchange="setLimitePerfiles('${d.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12px;background:var(--surface);color:var(--text)">
             <option value="1" ${limiteActual===1?'selected':''}>1 perfil</option>
@@ -1247,7 +1247,6 @@ async function loadAdminUsers(){
           </select>
         </div>`
       : `<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
-          <input type="number" min="1" max="20" value="3" style="width:56px;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font)" data-cupo-uid="${d.id}"/>
           <button class="btn-afam-on" data-uid="${d.id}">👨‍👩‍👧 Habilitar Familiar</button>
         </div>`;
     return`<div class="admin-card">
@@ -1306,8 +1305,7 @@ document.getElementById("admin-users-list").addEventListener("click",async e=>{
     toast("Familiar deshabilitado","ok");await loadAdminUsers();
   }
   if(cupo){
-    const cupoInput=document.querySelector(`input[data-cupo-uid="${cupo.dataset.uid}"]`);
-    const limiteMiembros=parseInt(cupoInput?.value)||3;
+    const limiteMiembros=parseInt(cupo.dataset.val)||3;
     await updateDoc(doc(db,"usuarios",cupo.dataset.uid),{limiteMiembros});
     toast(`Cupo actualizado a ${limiteMiembros} ✅`,"ok");await loadAdminUsers();
   }

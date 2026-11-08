@@ -1,5 +1,5 @@
 /* Service Worker — SaludAR | RavenTechs | 02/08/2026 */
-var CACHE = 'saludar-pwa-v2';
+var CACHE = 'saludar-pwa-v3';
 var SHELL = ['/', '/index.html', '/manifest.json'];
 self.addEventListener('install', function(e) {
   e.waitUntil(caches.open(CACHE).then(function(c) {
