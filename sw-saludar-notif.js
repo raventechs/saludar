@@ -1,4 +1,4 @@
-// sw-saludar-notif.js — SaludAR v2.8 (08/11/2026: red primero, hora h23, ventana de 30 min en los avisos)
+// sw-saludar-notif.js — SaludAR v2.9 (08/11/2026: red primero, hora h23, ventana de 30 min en los avisos)
 // Notificaciones locales sin FCM — Timezone: America/Argentina/Buenos_Aires
 // Lógica:
 //   - Tomas: notificación puntual a la hora exacta
@@ -6,7 +6,7 @@
 //   - 22:00: resumen de todas las tomas pendientes del día
 //   - Turnos/Estudios: día anterior a la misma hora + día del evento a las 08:00
 
-const CACHE_NAME = 'saludar-v2.8';
+const CACHE_NAME = 'saludar-v2.9';
 const ESTADO_CACHE = 'saludar-notif-estado';
 const SHELL = [
   '/',
