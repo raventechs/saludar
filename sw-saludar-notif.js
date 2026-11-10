@@ -6,7 +6,7 @@
 //   - 22:00: resumen de todas las tomas pendientes del día
 //   - Turnos/Estudios: día anterior a la misma hora + día del evento a las 08:00
 
-const CACHE_NAME = 'saludar-v2.12';
+const CACHE_NAME = 'saludar-v2.13';
 const ESTADO_CACHE = 'saludar-notif-estado';
 const SHELL = [
   '/',
